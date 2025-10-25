@@ -46,9 +46,7 @@ function App() {
     return <OrganizationSelectionPage />;
   }
 
-  const isAdmin = true; // TODO: Implement proper role checking
-
-  if (isAdmin) {
+  if (user.org_role === "admin") {
     return <AdminDashboard />;
   } else {
     return <MemberDashboard />;

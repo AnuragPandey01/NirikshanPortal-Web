@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Plus, CheckCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle } from "lucide-react";
 import useAuthStore from "@/store/authStore";
 
 const CreateOrganizationPage = () => {
@@ -80,10 +80,7 @@ const CreateOrganizationPage = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="h-8 w-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <Plus className="h-4 w-4 text-green-600" />
-            </div>
-            <h1 className="ml-3 text-xl font-semibold">Create Organization</h1>
+            <h1 className="text-xl font-semibold">Create Organization</h1>
           </div>
 
           <p className="text-muted-foreground mb-6">
@@ -131,7 +128,7 @@ const CreateOrganizationPage = () => {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t">
+          <div className="mt-6">
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
               <h4 className="text-sm font-medium text-blue-900 mb-1">
                 What happens next?

@@ -14,14 +14,7 @@ const LoginPage = () => {
     otp: "",
   });
 
-  const { user, sendOTP, loginWithOTP, loginWithGoogle } = useAuthStore();
-
-  // Redirect to dashboard if user is already authenticated
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, []);
+  const { sendOTP, loginWithOTP, loginWithGoogle } = useAuthStore();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

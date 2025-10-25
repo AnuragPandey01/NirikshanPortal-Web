@@ -10,6 +10,7 @@ import PrivateRoute from "@/components/PrivateRoute";
 import OrganizationRoute from "@/components/OrganizationRoute";
 import useAuthStore from "@/store/authStore";
 import LoadingPage from "@/pages/LoadingPage";
+import { useNavigate } from "react-router-dom";
 
 // Component to redirect to appropriate dashboard based on user role
 const DashboardRedirect = () => {
@@ -30,11 +31,18 @@ const DashboardRedirect = () => {
 
 // Auth initialization component
 const AuthInitializer = ({ children }) => {
+  const navigate = useNavigate();
   const { init, loading } = useAuthStore();
 
   useEffect(() => {
-    init();
-  }, [init]);
+    async function initAuth() {
+      await init();
+      if (useAuthStore.getState().user) {
+        navigate("/dashboard");
+      }
+    }
+    initAuth();
+  }, []);
 
   // Show loading spinner while initializing auth
   if (loading) {

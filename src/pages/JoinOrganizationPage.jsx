@@ -9,6 +9,7 @@ import useAuthStore from "@/store/authStore";
 
 const JoinOrganizationPage = () => {
   const [inviteCode, setInviteCode] = useState("");
+  const [organizationId, setOrganizationId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -22,12 +23,19 @@ const JoinOrganizationPage = () => {
       setError("Please enter an invite code");
       return;
     }
+    if (!organizationId.trim()) {
+      setError("Please enter an organization ID");
+      return;
+    }
 
     setLoading(true);
     setError("");
 
     try {
-      await joinOrganization(inviteCode.trim().toUpperCase());
+      await joinOrganization(
+        organizationId.trim(),
+        inviteCode.trim().toLowerCase()
+      );
       setSuccess(true);
       // Redirect to dashboard after successful join
       setTimeout(() => {
@@ -82,10 +90,27 @@ const JoinOrganizationPage = () => {
           </div>
 
           <p className="text-muted-foreground mb-6">
-            Enter the invite code you received to join an existing organization.
+            Enter the organization ID and invite code you received to join an
+            existing organization.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="organizationId">Organization ID</Label>
+              <Input
+                id="organizationId"
+                type="text"
+                placeholder="Enter organization ID"
+                value={organizationId}
+                onChange={(e) => setOrganizationId(e.target.value)}
+                className="w-full"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                The unique identifier for the organization
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="inviteCode">Invite Code</Label>
               <Input
@@ -112,7 +137,7 @@ const JoinOrganizationPage = () => {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || !inviteCode.trim()}
+              disabled={loading || !inviteCode.trim() || !organizationId.trim()}
             >
               {loading ? (
                 <>

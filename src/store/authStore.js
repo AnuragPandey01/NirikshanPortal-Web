@@ -104,32 +104,20 @@ const useAuthStore = create((set, get) => ({
   },
 
   // Join existing organization
-  joinOrganization: async (inviteCode) => {
+  joinOrganization: async (orgId, inviteCode) => {
     set({ loading: true });
     try {
-      const { user } = get();
-
-      // Find organization by invite code
-      const org = await pb
-        .collection("organizations")
-        .getFirstListItem(`invite_code = "${inviteCode}"`);
+      const { user, init } = get();
 
       // Add user as member
-      await pb.collection("organization_members").create({
-        organization: org.id,
-        user: user.id,
+      await pb.collection("OrganisationMembers").update(inviteCode, {
+        organisation: orgId,
+        member: user.user_id,
         role: "member",
+        status: "active",
       });
 
-      // Update user with role
-      const updatedUser = { ...user, org_role: "member" };
-
-      set({
-        user: updatedUser,
-        organization: org,
-        needsOrgSelection: false,
-        loading: false,
-      });
+      await init();
 
       return { success: true };
     } catch (error) {

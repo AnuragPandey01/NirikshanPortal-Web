@@ -2,12 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import useAuthStore from "@/store/authStore";
 
 const LoginPage = () => {
+  const [otpId, setOtpId] = useState(null);
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
-    password: "",
+    otp: "",
   });
+
+  const { sendOTP, loginWithOTP, loginWithGoogle } = useAuthStore();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -17,10 +22,42 @@ const LoginPage = () => {
     }));
   };
 
-  const onSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    // Add your login logic here
+    try {
+      const res = await sendOTP(formData.name,formData.email);
+      console.log(res);
+      setOtpId(res.data.otpId);
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+    }
+  };
+
+  const handleOTPSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      console.log(otpId, formData.otp);
+      await loginWithOTP(otpId, formData.otp);
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error("Error with Google login:", error);
+    }
+  };
+
+  const backToEmail = () => {
+    setOtpId(null);
+    setFormData({
+      name: "",
+      email: "",
+      otp: "",
+    });
   };
 
   return (
@@ -33,7 +70,7 @@ const LoginPage = () => {
           Log in to Nirikshan Portal
         </p>
 
-        <Button className="mt-8 w-full gap-3">
+        <Button className="mt-8 w-full gap-3" onClick={handleGoogleLogin}>
           <GoogleLogo />
           Continue with Google
         </Button>
@@ -44,50 +81,73 @@ const LoginPage = () => {
           <div className="flex-1 h-px bg-border"></div>
         </div>
 
-        <form className="w-full space-y-4" onSubmit={onSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Email"
+        {otpId === null ? (
+          <form className="w-full space-y-4" onSubmit={handleEmailSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Enter your name"
+                className="w-full"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                className="w-full"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <Button type="submit" className="mt-4 w-full">
+              Send OTP
+            </Button>
+          </form>
+        ) : (
+          <form className="w-full space-y-4" onSubmit={handleOTPSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="otp">Verification Code</Label>
+              <Input
+                id="otp"
+                name="otp"
+                type="text"
+                placeholder="Enter 6-digit code"
+                className="w-full"
+                value={formData.otp}
+                onChange={handleInputChange}
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                We sent a verification code to {formData.email}
+              </p>
+            </div>
+            <Button type="submit" className="mt-4 w-full">
+              Verify Code
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               className="w-full"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Password"
-              className="w-full"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <Button type="submit" className="mt-4 w-full">
-            Continue with Email
-          </Button>
-        </form>
+              onClick={backToEmail}
+            >
+              Back to email
+            </Button>
+          </form>
+        )}
 
-        <div className="mt-5 space-y-5">
-          <a
-            href="#"
-            className="text-sm block underline text-muted-foreground text-center"
-          >
-            Forgot your password?
-          </a>
-          <p className="text-sm text-center">
-            Don&apos;t have an account?
-            <a href="#" className="ml-1 underline text-muted-foreground">
-              Create account
-            </a>
+        <div className="mt-5">
+          <p className="text-sm text-center text-muted-foreground">
+            By continuing, you agree to our Terms of Service and Privacy Policy
           </p>
         </div>
       </div>

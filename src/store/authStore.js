@@ -143,32 +143,23 @@ const useAuthStore = create((set, get) => ({
   createOrganization: async (orgName) => {
     set({ loading: true });
     try {
-      const { user } = get();
+      const { user,init } = get();
 
       // Create organization
-      const org = await pb.collection("organizations").create({
+      const org = await pb.collection("Organisation").create({
         name: orgName,
-        created_by: user.id,
-        invite_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+        created_by: user.user_id,
       });
 
       // Add user as admin
-      await pb.collection("organization_members").create({
-        organization: org.id,
-        user: user.id,
+      await pb.collection("OrganisationMembers").create({
+        organisation: org.id,
+        member: user.user_id,
         role: "admin",
+        status: "active",
       });
-
       // Update user with role
-      const updatedUser = { ...user, org_role: "admin" };
-
-      set({
-        user: updatedUser,
-        organization: org,
-        needsOrgSelection: false,
-        loading: false,
-      });
-
+      await init();
       return { success: true };
     } catch (error) {
       set({ loading: false });
@@ -179,7 +170,7 @@ const useAuthStore = create((set, get) => ({
 
   logout: async () => {
     set({ loading: true });
-    try {
+    try { 
       pb.authStore.clear();
       localStorage.clear();
       set({

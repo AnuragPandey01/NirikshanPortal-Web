@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ const CreateOrganizationPage = () => {
   const [success, setSuccess] = useState(false);
 
   const { createOrganization } = useAuthStore();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +36,7 @@ const CreateOrganizationPage = () => {
       setSuccess(true);
       // Redirect to dashboard after successful creation
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        navigate("/dashboard");
       }, 2000);
     } catch (error) {
       setError("Failed to create organization. Please try again.");
@@ -44,7 +46,7 @@ const CreateOrganizationPage = () => {
   };
 
   const handleBack = () => {
-    window.location.href = "/organization-selection";
+    navigate("/organization-selection");
   };
 
   if (success) {

@@ -1,19 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Building2, Users, Plus, ArrowRight } from "lucide-react";
 
 const OrganizationSelectionPage = () => {
   const [selectedOption, setSelectedOption] = useState(null);
+  const navigate = useNavigate();
 
   const handleJoinOrg = () => {
     // Navigate to join organization page
-    window.location.href = "/join-organization";
+    navigate("/join-organization");
   };
 
   const handleCreateOrg = () => {
     // Navigate to create organization page
-    window.location.href = "/create-organization";
+    navigate("/create-organization");
   };
 
   return (

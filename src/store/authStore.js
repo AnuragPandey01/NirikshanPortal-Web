@@ -121,7 +121,11 @@ const useAuthStore = create((set, get) => ({
         role: "member",
       });
 
+      // Update user with role
+      const updatedUser = { ...user, org_role: "member" };
+
       set({
+        user: updatedUser,
         organization: org,
         needsOrgSelection: false,
         loading: false,
@@ -155,7 +159,11 @@ const useAuthStore = create((set, get) => ({
         role: "admin",
       });
 
+      // Update user with role
+      const updatedUser = { ...user, org_role: "admin" };
+
       set({
+        user: updatedUser,
         organization: org,
         needsOrgSelection: false,
         loading: false,

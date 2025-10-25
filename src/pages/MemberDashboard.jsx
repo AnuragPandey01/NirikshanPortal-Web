@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,11 +19,12 @@ import useAuthStore from "@/store/authStore";
 const MemberDashboard = () => {
   const { user, organization, logout } = useAuthStore();
   const [activeTab, setActiveTab] = useState("upload");
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await logout();
-      window.location.href = "/";
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
     }

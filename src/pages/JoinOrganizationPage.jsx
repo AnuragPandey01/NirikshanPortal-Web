@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ const JoinOrganizationPage = () => {
   const [success, setSuccess] = useState(false);
 
   const { joinOrganization } = useAuthStore();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +31,7 @@ const JoinOrganizationPage = () => {
       setSuccess(true);
       // Redirect to dashboard after successful join
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        navigate("/dashboard");
       }, 2000);
     } catch (error) {
       setError("Invalid invite code. Please check and try again.");
@@ -39,7 +41,7 @@ const JoinOrganizationPage = () => {
   };
 
   const handleBack = () => {
-    window.location.href = "/organization-selection";
+    navigate("/organization-selection");
   };
 
   if (success) {

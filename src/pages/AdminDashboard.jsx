@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,11 +24,12 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("upload");
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await logout();
-      window.location.href = "/";
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
     }

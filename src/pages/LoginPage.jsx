@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import useAuthStore from "@/store/authStore";
+import { useNavigate } from "react-router-dom";
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [otpId, setOtpId] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -12,7 +14,14 @@ const LoginPage = () => {
     otp: "",
   });
 
-  const { sendOTP, loginWithOTP, loginWithGoogle } = useAuthStore();
+  const { user, sendOTP, loginWithOTP, loginWithGoogle } = useAuthStore();
+
+  // Redirect to dashboard if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -25,7 +34,7 @@ const LoginPage = () => {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await sendOTP(formData.name,formData.email);
+      const res = await sendOTP(formData.name, formData.email);
       console.log(res);
       setOtpId(res.data.otpId);
     } catch (error) {

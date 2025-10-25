@@ -9,6 +9,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import PrivateRoute from "@/components/PrivateRoute";
 import OrganizationRoute from "@/components/OrganizationRoute";
 import useAuthStore from "@/store/authStore";
+import LoadingPage from "@/pages/LoadingPage";
 
 // Component to redirect to appropriate dashboard based on user role
 const DashboardRedirect = () => {
@@ -16,14 +17,7 @@ const DashboardRedirect = () => {
 
   // Show loading while determining role
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingPage />;
   }
 
   // Default to member dashboard if role is not available
@@ -44,14 +38,7 @@ const AuthInitializer = ({ children }) => {
 
   // Show loading spinner while initializing auth
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingPage />;
   }
 
   return children;

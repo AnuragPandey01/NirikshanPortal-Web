@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   FileText,
@@ -18,6 +19,7 @@ import {
   Calendar,
   Video,
   Camera,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -41,10 +43,12 @@ const CasesItem = () => {
   const [processingStage, setProcessingStage] = useState("");
   const [outputVideo, setOutputVideo] = useState(null);
   const [outputDialogOpen, setOutputDialogOpen] = useState(false);
-  const [createCaseDialogOpen, setCreateCaseDialogOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(false);
   const [photosLoading, setPhotosLoading] = useState(false);
+  const [caseName, setCaseName] = useState("");
+  const [caseDescription, setCaseDescription] = useState("");
   const videoPlayerRef = useRef(null);
 
   useEffect(() => {
@@ -54,16 +58,16 @@ const CasesItem = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-        const resultList = await pb.collection("Cases").getFullList({
-          expand: "video,photo",
-        });
-        console.log("cases", resultList);
-        setCases(resultList);
-      } catch (error) {
-        console.error("Error fetching cases:", error);
-      } finally {
-        setLoading(false);
-      }
+      const resultList = await pb.collection("Cases").getFullList({
+        expand: "video,photo",
+      });
+      console.log("cases", resultList);
+      setCases(resultList);
+    } catch (error) {
+      console.error("Error fetching cases:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchVideosAndPhotos = async () => {
@@ -119,6 +123,8 @@ const CasesItem = () => {
     // Create case record first
     try {
       const caseData = {
+        name: caseName,
+        description: caseDescription,
         video: selectedVideo.id,
         photo: selectedPhoto.id,
         organisation: organization?.id,
@@ -215,12 +221,14 @@ const CasesItem = () => {
     setOutputVideo(null);
     setProcessingProgress(0);
     setProcessingStage("");
-    setCreateCaseDialogOpen(false);
+    setShowCreateForm(false);
+    setCaseName("");
+    setCaseDescription("");
     toast.success("Case reset successfully");
   };
 
   const handleCreateCase = async () => {
-    setCreateCaseDialogOpen(true);
+    setShowCreateForm(true);
     await fetchVideosAndPhotos();
   };
 
@@ -268,7 +276,7 @@ const CasesItem = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
                     {/* Video Thumbnail */}
-                    <div className="w-24 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-24 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                       {caseItem.expand?.video?.video ? (
                         <video
                           className="w-full h-full object-cover"
@@ -297,7 +305,7 @@ const CasesItem = () => {
                     </div>
 
                     {/* Photo Thumbnail */}
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                       {caseItem.expand?.photo?.photo ? (
                         <img
                           src={pb.getFileUrl(
@@ -318,9 +326,15 @@ const CasesItem = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-2">
                         <h4 className="font-medium text-gray-900">
-                          Case #{caseItem.id.slice(-8)}
+                          {caseItem.name || `Case #${caseItem.id.slice(-8)}`}
                         </h4>
                       </div>
+
+                      {caseItem.description && (
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {caseItem.description}
+                        </p>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                         <div>
@@ -382,21 +396,56 @@ const CasesItem = () => {
         )}
       </Card>
 
-      {/* Create Case Dialog */}
-      <Dialog
-        open={createCaseDialogOpen}
-        onOpenChange={setCreateCaseDialogOpen}
-      >
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Case</DialogTitle>
-            <DialogDescription>
-              Select a video and reference photo to create a new face
-              recognition analysis case
-            </DialogDescription>
-          </DialogHeader>
+      {/* Create Case Form */}
+      {showCreateForm && (
+        <Card className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-semibold">Create New Case</h3>
+              <p className="text-sm text-muted-foreground">
+                Select a video and reference photo to create a new face
+                recognition analysis case
+              </p>
+            </div>
+            <Button variant="ghost" onClick={() => setShowCreateForm(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
 
           <div className="space-y-6">
+            {/* Case Name and Description */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label
+                  htmlFor="caseName"
+                  className="text-sm font-medium mb-2 block"
+                >
+                  Case Name *
+                </Label>
+                <Input
+                  id="caseName"
+                  placeholder="Enter case name"
+                  value={caseName}
+                  onChange={(e) => setCaseName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label
+                  htmlFor="caseDescription"
+                  className="text-sm font-medium mb-2 block"
+                >
+                  Description (Optional)
+                </Label>
+                <Input
+                  id="caseDescription"
+                  placeholder="Enter case description"
+                  value={caseDescription}
+                  onChange={(e) => setCaseDescription(e.target.value)}
+                />
+              </div>
+            </div>
+
             {/* Video Selection */}
             <div>
               <Label className="text-sm font-medium mb-3 block">
@@ -533,7 +582,12 @@ const CasesItem = () => {
             <div className="space-y-4">
               <Button
                 onClick={simulateProcessing}
-                disabled={!selectedVideo || !selectedPhoto || processing}
+                disabled={
+                  !selectedVideo ||
+                  !selectedPhoto ||
+                  processing ||
+                  !caseName.trim()
+                }
                 className="w-full"
               >
                 {processing ? (
@@ -613,8 +667,8 @@ const CasesItem = () => {
               )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </Card>
+      )}
 
       {/* Output Video Dialog */}
       <Dialog open={outputDialogOpen} onOpenChange={handleCloseOutput}>

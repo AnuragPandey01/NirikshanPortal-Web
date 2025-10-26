@@ -232,6 +232,27 @@ const CasesItem = () => {
     await fetchVideosAndPhotos();
   };
 
+  const handleDeleteCase = async (caseId) => {
+    if (!confirm("Are you sure you want to delete this case?")) return;
+
+    const deletePromise = async () => {
+      try {
+        await pb.collection("Cases").delete(caseId);
+        await fetchData(); // Refresh the list after deletion
+        return "Case deleted successfully";
+      } catch (error) {
+        console.error("Delete error:", error);
+        throw new Error("Failed to delete case");
+      }
+    };
+
+    toast.promise(deletePromise(), {
+      loading: "Deleting case...",
+      success: (message) => message,
+      error: (err) => err.message,
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Cases List */}
@@ -385,6 +406,7 @@ const CasesItem = () => {
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleDeleteCase(caseItem.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

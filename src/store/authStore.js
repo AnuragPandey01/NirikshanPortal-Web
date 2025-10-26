@@ -206,9 +206,16 @@ const useAuthStore = create((set, get) => ({
       const { organization } = get();
 
       // Create invite record
+      const record = await pb
+        .collection("users")
+        .getFirstListItem(`email="${email.trim()}"`);
+
+      if (!record) {
+        throw new Error("User not found");
+      }
       const invite = await pb.collection("OrganisationMembers").create({
-        organisation: organization.id,
-        member_email: email,
+        organisation: organization.id,  
+        member: record.id,
         role: "member",
         status: "pending",
       });

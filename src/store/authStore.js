@@ -31,7 +31,7 @@ const useAuthStore = create((set, get) => ({
               .collection("OrganisationMembers")
               .getList(1, 1);
             organization.memberCount = members.totalItems;
-            console.log("organization",organization);
+            console.log("organization", organization);
           } catch (error) {
             console.error("Error fetching organization:", error);
           }
@@ -214,7 +214,7 @@ const useAuthStore = create((set, get) => ({
         throw new Error("User not found");
       }
       const invite = await pb.collection("OrganisationMembers").create({
-        organisation: organization.id,  
+        organisation: organization.id,
         member: record.id,
         role: "member",
         status: "pending",
@@ -248,6 +248,58 @@ const useAuthStore = create((set, get) => ({
       } catch (error) {
         console.error("Error refreshing organization:", error);
       }
+    }
+  },
+
+  // Fetch organization members
+  fetchOrganizationMembers: async () => {
+    const { user } = get();
+    if (!user?.organisation_id) return [];
+
+    try {
+      const members = await pb
+        .collection("OrganisationMembers")
+        .getList(1, 50, {
+          filter: `organisation = "${user.organisation_id}"`,
+          expand: "member",
+        });
+
+      return members.items.map((item) => ({
+        id: item.id,
+        email: item.expand?.member?.email || item.member_email || "Unknown",
+        name: item.expand?.member?.name || "Unknown",
+        role: item.role,
+        status: item.status,
+        lastActive: item.updated || item.created,
+        memberId: item.member,
+      }));
+    } catch (error) {
+      console.error("Error fetching organization members:", error);
+      return [];
+    }
+  },
+
+  // Update member role
+  updateMemberRole: async (memberId, newRole) => {
+    try {
+      await pb.collection("OrganisationMembers").update(memberId, {
+        role: newRole,
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      throw error;
+    }
+  },
+
+  // Remove member from organization
+  removeMember: async (memberId) => {
+    try {
+      await pb.collection("OrganisationMembers").delete(memberId);
+      return { success: true };
+    } catch (error) {
+      console.error("Error removing member:", error);
+      throw error;
     }
   },
 

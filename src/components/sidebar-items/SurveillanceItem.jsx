@@ -5,12 +5,12 @@ import { Camera } from "lucide-react";
 const SurveillanceItem = () => {
   return (
     <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Surveillance Feeds</h3>
+      <h3 className="text-lg font-semibold mb-4">Uploaded Video</h3>
       <div className="space-y-4">
-        <p className="text-muted-foreground">No active feeds available.</p>
+        <p className="text-muted-foreground">No video available.</p>
         <Button className="w-full justify-start">
           <Camera className="h-4 w-4 mr-2" />
-          Connect New Feed
+          Upload Video
         </Button>
       </div>
     </Card>

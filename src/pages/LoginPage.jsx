@@ -40,7 +40,7 @@ const LoginPage = () => {
     try {
       console.log(otpId, formData.otp);
       await loginWithOTP(otpId, formData.otp);
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error verifying OTP:", error);
     }

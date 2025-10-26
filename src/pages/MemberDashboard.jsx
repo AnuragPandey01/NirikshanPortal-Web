@@ -37,7 +37,7 @@ const MemberDashboard = () => {
 
   const mainItems = [
     { id: "cases", label: "Cases", icon: FileText },
-    { id: "surveillance", label: "Surveillance", icon: Camera },
+    { id: "surveillance", label: "Upload Video", icon: Camera },
     { id: "search", label: "Person Search", icon: Search },
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "alerts", label: "Alerts", icon: AlertCircle },
@@ -70,12 +70,6 @@ const MemberDashboard = () => {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <span className="text-sm font-medium">{user?.email}</span>
-                </div>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
@@ -87,7 +81,9 @@ const MemberDashboard = () => {
 
         {/* Main Content */}
         <main className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {activeTab === "dashboard" && (
+              <DashboardItem setActiveTab={setActiveTab} />
+            )}
             {activeTab === "cases" && <CasesItem />}
             {activeTab === "surveillance" && <SurveillanceItem />}
             {activeTab === "search" && <SearchItem />}
@@ -96,7 +92,6 @@ const MemberDashboard = () => {
             {activeTab === "user-settings" && (
               <UserSettingsItem userRole="Member" />
             )}
-          </div>
         </main>
       </div>
     </div>

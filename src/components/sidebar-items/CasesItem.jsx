@@ -49,11 +49,27 @@ const CasesItem = () => {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [caseName, setCaseName] = useState("");
   const [caseDescription, setCaseDescription] = useState("");
+  const [matches, setMatches] = useState([]);
+  const [stats, setStats] = useState({
+    currentFrame: 0,
+    totalFrames: 0,
+    matchesFound: 0,
+  });
   const videoPlayerRef = useRef(null);
+  const wsRef = useRef(null);
 
   useEffect(() => {
     fetchData();
   }, [organization]);
+
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -110,7 +126,7 @@ const CasesItem = () => {
     toast.success("Reference photo selected");
   };
 
-  const simulateProcessing = async () => {
+  const startProcessing = async () => {
     if (!selectedVideo || !selectedPhoto) {
       toast.error("Please select both a video and a reference photo");
       return;
@@ -119,8 +135,11 @@ const CasesItem = () => {
     setProcessing(true);
     setProcessingProgress(0);
     setProcessingStage("Initializing analysis...");
+    setMatches([]);
+    setStats({ currentFrame: 0, totalFrames: 0, matchesFound: 0 });
 
     // Create case record first
+    let caseRecord;
     try {
       const caseData = {
         name: caseName,
@@ -132,76 +151,133 @@ const CasesItem = () => {
         created_at: new Date().toISOString(),
       };
 
-      const caseRecord = await pb.collection("Cases").create(caseData);
+      caseRecord = await pb.collection("Cases").create(caseData);
       toast.success("Case created successfully");
-
-      // Refresh cases list
       await fetchData();
     } catch (error) {
       toast.error("Failed to create case");
+      setProcessing(false);
+      return;
     }
 
-    const stages = [
-      { stage: "Extracting video frames...", duration: 2000 },
-      { stage: "Detecting faces in video...", duration: 3000 },
-      { stage: "Analyzing reference photo...", duration: 2000 },
-      { stage: "Matching faces...", duration: 4000 },
-      { stage: "Generating output video...", duration: 3000 },
-      { stage: "Finalizing results...", duration: 1000 },
-    ];
+    // Get file URLs from PocketBase
+    const videoUrl = pb.getFileUrl(selectedVideo, selectedVideo.video);
+    const photoUrl = pb.getFileUrl(selectedPhoto, selectedPhoto.photo);
 
-    let totalProgress = 0;
-    const totalDuration = stages.reduce(
-      (sum, stage) => sum + stage.duration,
-      0
-    );
+    // Connect to WebSocket
+    const wsUrl = "ws://localhost:8000/ws/detect-faces";
+    const ws = new WebSocket(wsUrl);
 
-    for (let i = 0; i < stages.length; i++) {
-      const { stage, duration } = stages[i];
-      setProcessingStage(stage);
+    wsRef.current = ws;
 
-      // Simulate progress for this stage
-      const stageProgress = duration / totalDuration;
-      const startProgress = totalProgress;
+    ws.onopen = () => {
+      console.log("Connected to WebSocket");
+      setProcessingStage("✓ Connected to server");
 
-      await new Promise((resolve) => {
-        const interval = setInterval(() => {
-          const elapsed = Date.now() - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          setProcessingProgress(startProgress + progress * stageProgress);
-
-          if (progress >= 1) {
-            clearInterval(interval);
-            resolve();
-          }
-        }, 50);
-
-        const startTime = Date.now();
-      });
-
-      totalProgress += stageProgress;
-    }
-
-    // Create fake output video
-    const fakeOutputVideo = {
-      id: "fake-output-" + Date.now(),
-      video: "analysis_result.mp4",
-      thumbnail: selectedVideo.thumbnail,
-      created: new Date().toISOString(),
-      matches: Math.floor(Math.random() * 5) + 1,
-      confidence: (Math.random() * 0.3 + 0.7).toFixed(2),
+      // Send parameters to WebSocket
+      ws.send(
+        JSON.stringify({
+          video_url: videoUrl,
+          photo_url: photoUrl,
+          model_name: "Facenet512",
+          detector_backend: "mtcnn",
+          threshold: 0.3,
+          frame_skip: 60,
+        })
+      );
     };
 
-    setOutputVideo(fakeOutputVideo);
-    setProcessing(false);
-    setProcessingProgress(100);
-    setProcessingStage("Analysis complete!");
+    ws.onmessage = async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const msgType = data.type;
 
-    toast.success(
-      `Analysis complete! Found ${fakeOutputVideo.matches} matches with ${(
-        fakeOutputVideo.confidence * 100
-      ).toFixed(1)}% confidence`
-    );
+        if (msgType === "status") {
+          setProcessingStage(`📋 ${data.message}`);
+        } else if (msgType === "video_info") {
+          setStats((prev) => ({
+            ...prev,
+            totalFrames: data.total_frames,
+          }));
+          setProcessingStage(`🎥 Processing ${data.total_frames} frames...`);
+        } else if (msgType === "progress") {
+          const percentage = data.percentage;
+          setProcessingProgress(percentage);
+          setStats({
+            currentFrame: data.current_frame,
+            totalFrames: data.total_frames,
+            matchesFound: data.matches_found,
+          });
+          setProcessingStage(
+            `Processing: ${data.current_frame}/${data.total_frames} frames`
+          );
+        } else if (msgType === "match") {
+          setMatches((prev) => [
+            ...prev,
+            {
+              frameNumber: data.frame_number,
+              timestamp: data.timestamp,
+              similarity: data.similarity_score,
+              frameBase64: data.frame_base64,
+            },
+          ]);
+        } else if (msgType === "complete") {
+          setProcessingProgress(100);
+          setProcessingStage("✅ Analysis complete!");
+
+          // Update case record with results
+          pb.collection("Cases")
+            .update(caseRecord.id, {
+              status: "completed",
+              matches_count: data.matches_count,
+              processed_frames: data.processed_frames,
+            })
+            .catch((err) => console.error("Error updating case:", err));
+
+          setOutputVideo({
+            matches: data.matches_count,
+            confidence: data.matches_count > 0 ? 0.8 : 0,
+            processedFrames: data.processed_frames,
+          });
+
+          toast.success(
+            `Analysis complete! Found ${data.matches_count} matches in ${data.processed_frames} processed frames.`
+          );
+          setProcessing(false);
+          await fetchData();
+        } else if (msgType === "error") {
+          setProcessingStage(`❌ Error: ${data.detail}`);
+          toast.error(`Analysis failed: ${data.detail}`);
+
+          // Update case record with error
+          pb.collection("Cases")
+            .update(caseRecord.id, { status: "failed" })
+            .catch((err) => console.error("Error updating case:", err));
+
+          setProcessing(false);
+          await fetchData();
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setProcessingStage(
+        "❌ Connection error. Make sure the server is running."
+      );
+      toast.error("Failed to connect to analysis server");
+      setProcessing(false);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+      if (processing) {
+        setProcessingStage("Connection closed unexpectedly");
+        setProcessing(false);
+      }
+    };
   };
 
   const handleViewOutput = () => {
@@ -216,14 +292,23 @@ const CasesItem = () => {
   };
 
   const resetCase = () => {
+    // Close WebSocket if open
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
     setSelectedVideo(null);
     setSelectedPhoto(null);
     setOutputVideo(null);
+    setProcessing(false);
     setProcessingProgress(0);
     setProcessingStage("");
     setShowCreateForm(false);
     setCaseName("");
     setCaseDescription("");
+    setMatches([]);
+    setStats({ currentFrame: 0, totalFrames: 0, matchesFound: 0 });
     toast.success("Case reset successfully");
   };
 
@@ -603,7 +688,7 @@ const CasesItem = () => {
             {/* Processing Section */}
             <div className="space-y-4">
               <Button
-                onClick={simulateProcessing}
+                onClick={startProcessing}
                 disabled={
                   !selectedVideo ||
                   !selectedPhoto ||
@@ -642,6 +727,64 @@ const CasesItem = () => {
                         style={{ width: `${processingProgress}%` }}
                       />
                     </div>
+
+                    {/* Real-time Stats */}
+                    <div className="grid grid-cols-3 gap-2 pt-2">
+                      <div className="text-center p-2 bg-blue-50 rounded">
+                        <div className="text-lg font-bold text-blue-600">
+                          {stats.currentFrame}
+                        </div>
+                        <div className="text-xs text-blue-600">
+                          Current Frame
+                        </div>
+                      </div>
+                      <div className="text-center p-2 bg-green-50 rounded">
+                        <div className="text-lg font-bold text-green-600">
+                          {stats.totalFrames}
+                        </div>
+                        <div className="text-xs text-green-600">
+                          Total Frames
+                        </div>
+                      </div>
+                      <div className="text-center p-2 bg-purple-50 rounded">
+                        <div className="text-lg font-bold text-purple-600">
+                          {stats.matchesFound}
+                        </div>
+                        <div className="text-xs text-purple-600">Matches</div>
+                      </div>
+                    </div>
+
+                    {/* Show Matches if any */}
+                    {matches.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-sm font-medium mb-2">
+                          Recent Matches:
+                        </div>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {matches.slice(-5).map((match, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs"
+                            >
+                              <img
+                                src={`data:image/jpeg;base64,${match.frameBase64}`}
+                                alt="Match"
+                                className="w-12 h-9 object-cover rounded"
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium">
+                                  Frame {match.frameNumber}
+                                </div>
+                                <div className="text-gray-600">
+                                  {match.timestamp}s •{" "}
+                                  {(match.similarity * 100).toFixed(1)}%
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Card>
               )}
@@ -655,8 +798,8 @@ const CasesItem = () => {
                         Analysis Complete!
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        Found {outputVideo.matches} matches with{" "}
-                        {(outputVideo.confidence * 100).toFixed(1)}% confidence
+                        Found {outputVideo.matches} matches in{" "}
+                        {outputVideo.processedFrames} processed frames
                       </p>
                     </div>
                     <Button onClick={handleViewOutput} variant="outline">
@@ -674,15 +817,17 @@ const CasesItem = () => {
                     </div>
                     <div className="p-3 bg-green-50 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
-                        {(outputVideo.confidence * 100).toFixed(1)}%
+                        {outputVideo.processedFrames}
                       </div>
-                      <div className="text-sm text-green-600">Confidence</div>
+                      <div className="text-sm text-green-600">
+                        Processed Frames
+                      </div>
                     </div>
                     <div className="p-3 bg-purple-50 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600">
-                        HD
+                        {(outputVideo.confidence * 100).toFixed(0)}%
                       </div>
-                      <div className="text-sm text-purple-600">Quality</div>
+                      <div className="text-sm text-purple-600">Confidence</div>
                     </div>
                   </div>
                 </Card>
@@ -694,14 +839,10 @@ const CasesItem = () => {
 
       {/* Output Video Dialog */}
       <Dialog open={outputDialogOpen} onOpenChange={handleCloseOutput}>
-        <DialogContent className="max-w-4xl w-[90vw]">
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Analysis Results</span>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
             </DialogTitle>
             <DialogDescription>
               Video with highlighted face matches and analysis results
@@ -732,14 +873,16 @@ const CasesItem = () => {
                       <span className="font-medium">{outputVideo.matches}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span>Processed Frames:</span>
+                      <span className="font-medium">
+                        {outputVideo.processedFrames}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
                       <span>Confidence:</span>
                       <span className="font-medium">
                         {(outputVideo.confidence * 100).toFixed(1)}%
                       </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Processing Time:</span>
-                      <span className="font-medium">15.3s</span>
                     </div>
                   </div>
                 </div>
@@ -756,6 +899,38 @@ const CasesItem = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Display Matches */}
+              {matches.length > 0 && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-3">Detected Matches</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {matches.map((match, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white p-2 rounded-lg border border-gray-200"
+                      >
+                        <img
+                          src={`data:image/jpeg;base64,${match.frameBase64}`}
+                          alt={`Match ${idx + 1}`}
+                          className="w-full h-24 object-cover rounded mb-2"
+                        />
+                        <div className="text-xs">
+                          <div className="font-medium">
+                            Frame {match.frameNumber}
+                          </div>
+                          <div className="text-gray-600">
+                            {match.timestamp}s
+                          </div>
+                          <div className="text-blue-600 font-semibold">
+                            {(match.similarity * 100).toFixed(1)}% similarity
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

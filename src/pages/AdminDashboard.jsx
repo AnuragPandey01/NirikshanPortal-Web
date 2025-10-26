@@ -1,32 +1,35 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Sidebar from "@/components/ui/sidebar";
 import {
-  FileText,
   Users,
-  Settings,
+  FileText,
   LogOut,
   User,
-  UserPlus,
-  Copy,
   Crown,
   Camera,
   BarChart,
   Search,
   AlertCircle,
-  Shield,
+  Building2,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
+
+// Import sidebar item components
+import DashboardItem from "@/components/sidebar-items/DashboardItem";
+import CasesItem from "@/components/sidebar-items/CasesItem";
+import SurveillanceItem from "@/components/sidebar-items/SurveillanceItem";
+import SearchItem from "@/components/sidebar-items/SearchItem";
+import AnalyticsItem from "@/components/sidebar-items/AnalyticsItem";
+import AlertsItem from "@/components/sidebar-items/AlertsItem";
+import UsersItem from "@/components/sidebar-items/UsersItem";
+import OrganizationSettingsItem from "@/components/sidebar-items/OrganizationSettingsItem";
+import UserSettingsItem from "@/components/sidebar-items/UserSettingsItem";
 
 const AdminDashboard = () => {
   const { user, organization, logout } = useAuthStore();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [showInviteForm, setShowInviteForm] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -38,18 +41,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleInviteMember = async (e) => {
-    e.preventDefault();
-    console.log("Inviting member:", inviteEmail);
-    setInviteEmail("");
-    setShowInviteForm(false);
-  };
-
-  const copyInviteCode = () => {
-    navigator.clipboard.writeText(organization?.invite_code || "");
-  };
-
-  const sidebarItems = [
+  const mainItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart },
     { id: "cases", label: "Cases", icon: FileText },
     { id: "surveillance", label: "Surveillance", icon: Camera },
@@ -57,17 +49,26 @@ const AdminDashboard = () => {
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "alerts", label: "Alerts", icon: AlertCircle },
     { id: "users", label: "Users", icon: Users },
-    { id: "settings", label: "Settings", icon: Shield },
+  ];
+
+  const orgSettingsItems = [
+    { id: "org-settings", label: "Organization Settings", icon: Building2 },
+  ];
+
+  const userSettingsItems = [
+    { id: "user-settings", label: "User Settings", icon: User },
   ];
 
   return (
     <div className="min-h-screen bg-muted flex">
-      <Sidebar 
-        items={sidebarItems} 
-        activeItem={activeTab} 
-        onItemClick={setActiveTab} 
+      <Sidebar
+        mainItems={mainItems}
+        orgSettingsItems={orgSettingsItems}
+        userSettingsItems={userSettingsItems}
+        activeItem={activeTab}
+        onItemClick={setActiveTab}
       />
-      
+
       <div className="flex-1 ml-64">
         {/* Header */}
         <header className="bg-white border-b">
@@ -104,127 +105,17 @@ const AdminDashboard = () => {
         <main className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activeTab === "dashboard" && (
-              <>
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">System Overview</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span>Active Cases</span>
-                      <span className="font-semibold">0</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Surveillance Feeds</span>
-                      <span className="font-semibold">0</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Pending Alerts</span>
-                      <span className="font-semibold">0</span>
-                    </div>
-                  </div>
-                </Card>
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                  <div className="space-y-4">
-                    <Button className="w-full justify-start" onClick={() => setActiveTab("search")}>
-                      <Search className="h-4 w-4 mr-2" />
-                      New Person Search
-                    </Button>
-                    <Button className="w-full justify-start" onClick={() => setActiveTab("cases")}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Create New Case
-                    </Button>
-                    <Button className="w-full justify-start" onClick={() => setActiveTab("surveillance")}>
-                      <Camera className="h-4 w-4 mr-2" />
-                      View Surveillance
-                    </Button>
-                  </div>
-                </Card>
-              </>
+              <DashboardItem setActiveTab={setActiveTab} />
             )}
-
-            {activeTab === "users" && (
-              <Card className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold">Team Members</h3>
-                  <Button onClick={() => setShowInviteForm(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite Member
-                  </Button>
-                </div>
-
-                {showInviteForm && (
-                  <form onSubmit={handleInviteMember} className="mb-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          placeholder="Enter email address"
-                        />
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button type="submit">Send Invite</Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setShowInviteForm(false)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
-                )}
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <User className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">{user?.email}</p>
-                        <p className="text-sm text-muted-foreground">Admin</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 border rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium">Invite Code</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Share this code to invite team members
-                      </p>
-                    </div>
-                    <Button variant="ghost" onClick={copyInviteCode}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </Button>
-                  </div>
-                  <code className="block mt-2 p-2 bg-muted rounded">
-                    {organization?.invite_code}
-                  </code>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "settings" && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-6">Organization Settings</h3>
-                <div className="space-y-6">
-                  <div>
-                    <Label htmlFor="orgName">Organization Name</Label>
-                    <Input
-                      id="orgName"
-                      value={organization?.name || ""}
-                      disabled
-                    />
-                  </div>
-                </div>
-              </Card>
+            {activeTab === "cases" && <CasesItem />}
+            {activeTab === "surveillance" && <SurveillanceItem />}
+            {activeTab === "search" && <SearchItem />}
+            {activeTab === "analytics" && <AnalyticsItem />}
+            {activeTab === "alerts" && <AlertsItem />}
+            {activeTab === "users" && <UsersItem />}
+            {activeTab === "org-settings" && <OrganizationSettingsItem />}
+            {activeTab === "user-settings" && (
+              <UserSettingsItem userRole="Admin" />
             )}
           </div>
         </main>

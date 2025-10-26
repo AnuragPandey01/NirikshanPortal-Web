@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import Sidebar from "@/components/ui/sidebar";
 import {
   FileText,
-  Users,
   LogOut,
   User,
   Camera,
@@ -14,6 +12,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
+
+// Import sidebar item components
+import CasesItem from "@/components/sidebar-items/CasesItem";
+import SurveillanceItem from "@/components/sidebar-items/SurveillanceItem";
+import SearchItem from "@/components/sidebar-items/SearchItem";
+import AnalyticsItem from "@/components/sidebar-items/AnalyticsItem";
+import AlertsItem from "@/components/sidebar-items/AlertsItem";
+import UserSettingsItem from "@/components/sidebar-items/UserSettingsItem";
 
 const MemberDashboard = () => {
   const { user, organization, logout } = useAuthStore();
@@ -29,7 +35,7 @@ const MemberDashboard = () => {
     }
   };
 
-  const sidebarItems = [
+  const mainItems = [
     { id: "cases", label: "Cases", icon: FileText },
     { id: "surveillance", label: "Surveillance", icon: Camera },
     { id: "search", label: "Person Search", icon: Search },
@@ -37,14 +43,19 @@ const MemberDashboard = () => {
     { id: "alerts", label: "Alerts", icon: AlertCircle },
   ];
 
+  const userSettingsItems = [
+    { id: "user-settings", label: "User Settings", icon: User },
+  ];
+
   return (
     <div className="min-h-screen bg-muted flex">
-      <Sidebar 
-        items={sidebarItems} 
-        activeItem={activeTab} 
-        onItemClick={setActiveTab} 
+      <Sidebar
+        mainItems={mainItems}
+        userSettingsItems={userSettingsItems}
+        activeItem={activeTab}
+        onItemClick={setActiveTab}
       />
-      
+
       <div className="flex-1 ml-64">
         {/* Header */}
         <header className="bg-white border-b">
@@ -77,77 +88,13 @@ const MemberDashboard = () => {
         {/* Main Content */}
         <main className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activeTab === "cases" && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Active Cases</h3>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">No active cases found.</p>
-                  <Button className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Create New Case
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "surveillance" && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Surveillance Feeds</h3>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">No active feeds available.</p>
-                  <Button className="w-full justify-start">
-                    <Camera className="h-4 w-4 mr-2" />
-                    Connect New Feed
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "search" && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Person Search</h3>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">Upload an image to start searching.</p>
-                  <Button className="w-full justify-start">
-                    <Search className="h-4 w-4 mr-2" />
-                    New Search
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "analytics" && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Analytics Dashboard</h3>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">No analytics data available.</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">Total Cases</p>
-                      <p className="text-2xl font-semibold">0</p>
-                    </div>
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">Active Searches</p>
-                      <p className="text-2xl font-semibold">0</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "alerts" && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Recent Alerts</h3>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">No alerts found.</p>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm">Notification Settings</p>
-                    <p className="text-muted-foreground text-sm">
-                      You will receive alerts for matches above 85% confidence
-                    </p>
-                  </div>
-                </div>
-              </Card>
+            {activeTab === "cases" && <CasesItem />}
+            {activeTab === "surveillance" && <SurveillanceItem />}
+            {activeTab === "search" && <SearchItem />}
+            {activeTab === "analytics" && <AnalyticsItem />}
+            {activeTab === "alerts" && <AlertsItem />}
+            {activeTab === "user-settings" && (
+              <UserSettingsItem userRole="Member" />
             )}
           </div>
         </main>

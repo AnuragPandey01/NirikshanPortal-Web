@@ -3,6 +3,7 @@ import pb from "@/lib/pb";
 
 const useAuthStore = create((set, get) => ({
   user: null,
+  organization: null,
   loading: true,
   needsOrgSelection: false,
 
@@ -12,10 +13,34 @@ const useAuthStore = create((set, get) => ({
     try {
       // Check if user is already authenticated
       if (pb.authStore.isValid) {
-        const userProfile = await pb.collection("userProfile").getFirstListItem();
+        const userProfile = await pb
+          .collection("userProfile")
+          .getFirstListItem();
         const hasOrg = userProfile.organisation_id !== "";
+
+        let organization = null;
+        if (hasOrg) {
+          try {
+            // Fetch organization details
+            organization = await pb
+              .collection("Organisation")
+              .getOne(userProfile.organisation_id);
+
+            // Fetch member count
+            const members = await pb
+              .collection("OrganisationMembers")
+              .getList(1, 1, {
+                filter: `organisation = "${userProfile.organisation_id}" && status = "active"`,
+              });
+            organization.memberCount = members.totalItems;
+          } catch (error) {
+            console.error("Error fetching organization:", error);
+          }
+        }
+
         set({
           user: userProfile,
+          organization,
           needsOrgSelection: !hasOrg,
           loading: false,
         });
@@ -29,11 +54,10 @@ const useAuthStore = create((set, get) => ({
   },
 
   // Send OTP to email
-  sendOTP: async (name,email) => {
+  sendOTP: async (name, email) => {
     try {
-
       //try creating a user
-      try{
+      try {
         const randomPassword = Math.random().toString(36).substring(2, 15);
         await pb.collection("users").create({
           email: email,
@@ -41,7 +65,7 @@ const useAuthStore = create((set, get) => ({
           password: randomPassword,
           passwordConfirm: randomPassword,
         });
-      }catch(error){
+      } catch (error) {
         console.debug("Maybe user already exists, lets send OTP", error);
       }
 
@@ -60,9 +84,7 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true });
     try {
       // Verify OTP and authenticate
-      await pb
-        .collection("users")
-        .authWithOTP(otpId, otp);
+      await pb.collection("users").authWithOTP(otpId, otp);
 
       await get().init();
 
@@ -78,9 +100,7 @@ const useAuthStore = create((set, get) => ({
   loginWithGoogle: async () => {
     set({ loading: true });
     try {
-      await pb
-        .collection("users")
-        .authWithOAuth2({ provider: "google" });
+      await pb.collection("users").authWithOAuth2({ provider: "google" });
 
       await get().init();
 
@@ -120,7 +140,7 @@ const useAuthStore = create((set, get) => ({
   createOrganization: async (orgName) => {
     set({ loading: true });
     try {
-      const { user,init } = get();
+      const { user, init } = get();
 
       // Create organization
       const org = await pb.collection("Organisation").create({
@@ -145,13 +165,77 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Update organization details
+  updateOrganization: async (orgId, updates) => {
+    try {
+      const updatedOrg = await pb
+        .collection("Organisation")
+        .update(orgId, updates);
+
+      // Update local state
+      set((state) => ({
+        organization: { ...state.organization, ...updatedOrg },
+      }));
+
+      return { success: true, data: updatedOrg };
+    } catch (error) {
+      console.error("Error updating organization:", error);
+      throw error;
+    }
+  },
+
+  // Create member invite
+  createMemberInvite: async (email) => {
+    try {
+      const { organization } = get();
+
+      // Create invite record
+      const invite = await pb.collection("OrganisationMembers").create({
+        organisation: organization.id,
+        member_email: email,
+        role: "member",
+        status: "pending",
+      });
+
+      return { success: true, data: invite };
+    } catch (error) {
+      console.error("Error creating member invite:", error);
+      throw error;
+    }
+  },
+
+  // Refresh organization data
+  refreshOrganization: async () => {
+    const { user } = get();
+    if (user?.organisation_id) {
+      try {
+        const organization = await pb
+          .collection("Organisation")
+          .getOne(user.organisation_id);
+
+        // Fetch member count
+        const members = await pb
+          .collection("OrganisationMembers")
+          .getList(1, 1, {
+            filter: `organisation = "${user.organisation_id}" && status = "active"`,
+          });
+        organization.memberCount = members.totalItems;
+
+        set({ organization });
+      } catch (error) {
+        console.error("Error refreshing organization:", error);
+      }
+    }
+  },
+
   logout: async () => {
     set({ loading: true });
-    try { 
+    try {
       pb.authStore.clear();
       localStorage.clear();
       set({
         user: null,
+        organization: null,
         needsOrgSelection: false,
         loading: false,
       });

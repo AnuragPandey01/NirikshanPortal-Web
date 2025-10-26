@@ -223,7 +223,7 @@ const SurveillanceItem = () => {
                         >
                           <source src={pb.getFileUrl(video, video.video)} type="video/mp4" />
                         </video>
-                        <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <PlayCircle className="h-12 w-12 text-white" />
                         </div>
                       </>

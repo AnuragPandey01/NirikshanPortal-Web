@@ -78,22 +78,11 @@ const useAuthStore = create((set, get) => ({
   loginWithGoogle: async () => {
     set({ loading: true });
     try {
-      const authData = await pb.collection("users").authWithOAuth2({
-        provider: "google",
-        urlCallback: (url) => {
-          window.open(url, "_blank", "width=500,height=600");
-        },
-      });
+      await pb
+        .collection("users")
+        .authWithOAuth2({ provider: "google" });
 
-      const user = authData.record;
-      const org = await get().getUserOrganization(user.id);
-
-      set({
-        user,
-        organization: org,
-        needsOrgSelection: !org,
-        loading: false,
-      });
+      await get().init();
 
       return { success: true };
     } catch (error) {

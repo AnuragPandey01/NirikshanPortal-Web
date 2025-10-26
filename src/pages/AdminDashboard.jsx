@@ -13,6 +13,7 @@ import {
   Search,
   AlertCircle,
   Building2,
+  Upload,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
 
@@ -45,7 +46,7 @@ const AdminDashboard = () => {
     { id: "dashboard", label: "Dashboard", icon: BarChart },
     { id: "cases", label: "Cases", icon: FileText },
     { id: "surveillance", label: "Upload Video", icon: Camera },
-    { id: "search", label: "Person Search", icon: Search },
+    { id: "search", label: "Reference Image", icon: Upload },
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "alerts", label: "Alerts", icon: AlertCircle },
     { id: "users", label: "Users", icon: Users },

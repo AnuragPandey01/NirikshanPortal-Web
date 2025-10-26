@@ -10,6 +10,7 @@ import {
   BarChart,
   Search,
   AlertCircle,
+  Upload,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
 
@@ -38,7 +39,7 @@ const MemberDashboard = () => {
   const mainItems = [
     { id: "cases", label: "Cases", icon: FileText },
     { id: "surveillance", label: "Upload Video", icon: Camera },
-    { id: "search", label: "Person Search", icon: Search },
+    { id: "search", label: "Reference Image", icon: Upload },
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "alerts", label: "Alerts", icon: AlertCircle },
   ];

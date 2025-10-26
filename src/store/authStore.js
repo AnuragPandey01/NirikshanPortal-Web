@@ -29,10 +29,9 @@ const useAuthStore = create((set, get) => ({
             // Fetch member count
             const members = await pb
               .collection("OrganisationMembers")
-              .getList(1, 1, {
-                filter: `organisation = "${userProfile.organisation_id}" && status = "active"`,
-              });
+              .getList(1, 1);
             organization.memberCount = members.totalItems;
+            console.log("organization",organization);
           } catch (error) {
             console.error("Error fetching organization:", error);
           }
@@ -165,21 +164,38 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Update organization details
-  updateOrganization: async (orgId, updates) => {
+  updateOrgName: async (name) => {
+    const { user, organization } = get();
     try {
+      const data = {
+        name: name,
+        created_by: user.user_id,
+      };
+      await pb.collection("Organisation").update(organization.id, data);
+      set({ organization: { ...organization, name: name } });
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating organization name:", error);
+      throw error;
+    }
+  },
+
+  updateOrgLogo: async (formData) => {
+    const { user, organization } = get();
+    try {
+      const logo = formData.get("logo");
+      const data = {
+        logo: logo,
+        name: organization.name,
+        created_by: user.user_id,
+      };
       const updatedOrg = await pb
         .collection("Organisation")
-        .update(orgId, updates);
-
-      // Update local state
-      set((state) => ({
-        organization: { ...state.organization, ...updatedOrg },
-      }));
-
-      return { success: true, data: updatedOrg };
+        .update(organization.id, data);
+      set({ organization: { ...organization, logo: updatedOrg.logo } });
+      return { success: true };
     } catch (error) {
-      console.error("Error updating organization:", error);
+      console.error("Error updating organization logo:", error);
       throw error;
     }
   },

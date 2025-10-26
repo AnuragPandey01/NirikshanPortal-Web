@@ -103,21 +103,19 @@ const AdminDashboard = () => {
 
         {/* Main Content */}
         <main className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activeTab === "dashboard" && (
-              <DashboardItem setActiveTab={setActiveTab} />
-            )}
-            {activeTab === "cases" && <CasesItem />}
-            {activeTab === "surveillance" && <SurveillanceItem />}
-            {activeTab === "search" && <SearchItem />}
-            {activeTab === "analytics" && <AnalyticsItem />}
-            {activeTab === "alerts" && <AlertsItem />}
-            {activeTab === "users" && <UsersItem />}
-            {activeTab === "org-settings" && <OrganizationSettingsItem />}
-            {activeTab === "user-settings" && (
-              <UserSettingsItem userRole="Admin" />
-            )}
-          </div>
+          {activeTab === "dashboard" && (
+            <DashboardItem setActiveTab={setActiveTab} />
+          )}
+          {activeTab === "cases" && <CasesItem />}
+          {activeTab === "surveillance" && <SurveillanceItem />}
+          {activeTab === "search" && <SearchItem />}
+          {activeTab === "analytics" && <AnalyticsItem />}
+          {activeTab === "alerts" && <AlertsItem />}
+          {activeTab === "users" && <UsersItem />}
+          {activeTab === "org-settings" && <OrganizationSettingsItem />}
+          {activeTab === "user-settings" && (
+            <UserSettingsItem userRole="Admin" />
+          )}
         </main>
       </div>
     </div>

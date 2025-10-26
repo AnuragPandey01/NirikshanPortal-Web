@@ -1,23 +1,30 @@
-import { Card } from "@/components/ui/card";
+import {
+  mockSummaryData,
+  mockDetectionData,
+  mockVideoData,
+  mockSuspectData,
+  mockPerformanceData,
+  mockInvestigationData,
+} from "../analytics/mockData";
+import SummarySection from "../analytics/SummarySection";
+import DetectionAnalytics from "../analytics/DetectionAnalytics";
+import VideoProcessingAnalytics from "../analytics/VideoProcessingAnalytics";
+import SuspectAnalytics from "../analytics/SuspectAnalytics";
+import SystemPerformanceAnalytics from "../analytics/SystemPerformanceAnalytics";
+import InvestigationReports from "../analytics/InvestigationReports";
 
 const AnalyticsItem = () => {
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Analytics Dashboard</h3>
-      <div className="space-y-4">
-        <p className="text-muted-foreground">No analytics data available.</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">Total Cases</p>
-            <p className="text-2xl font-semibold">0</p>
-          </div>
-          <div className="p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">Active Searches</p>
-            <p className="text-2xl font-semibold">0</p>
-          </div>
-        </div>
-      </div>
-    </Card>
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      <h1 className="text-3xl font-bold mb-8">Analytics Dashboard</h1>
+      
+      <SummarySection data={mockSummaryData} />
+      <DetectionAnalytics data={mockDetectionData} />
+      <VideoProcessingAnalytics data={mockVideoData} />
+      <SuspectAnalytics data={mockSuspectData} />
+      <SystemPerformanceAnalytics data={mockPerformanceData} />
+      <InvestigationReports data={mockInvestigationData} />
+    </div>
   );
 };
 

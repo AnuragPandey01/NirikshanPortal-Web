@@ -55,31 +55,32 @@ const SearchItem = () => {
 
     setUploading(true);
 
-    // Upload files one by one with progress tracking
-    for (const file of files) {
-      const uploadPromise = async () => {
-        try {
-          const formData = new FormData();
-          formData.append('photo', file);
-          formData.append('organisation', organization?.id);
+    try {
+      // Upload files one by one with progress tracking
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('organisation', organization?.id);
 
-          await pb.collection('ReferencePhoto').create(formData);
-          return `${file.name} uploaded successfully`;
-        } catch (error) {
-          console.error('Upload error:', error);
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-      };
-
-      await toast.promise(uploadPromise(), {
-        loading: `Uploading ${file.name}...`,
-        success: (message) => message,
-        error: (err) => err.message
-      });
+        await toast.promise(
+          (async () => {
+            await pb.collection('ReferencePhoto').create(formData);
+            // Fetch updated list after each successful upload
+            await fetchReferencePhotos();
+            return `${file.name} uploaded successfully`;
+          })(),
+          {
+            loading: `Uploading ${file.name}...`,
+            success: (message) => message,
+            error: (err) => err.message
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      setUploading(false);
     }
-
-    setUploading(false);
-    await fetchReferencePhotos(); // Refresh the photos list
   };
 
   const handleDelete = async (photoId) => {

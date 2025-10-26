@@ -40,25 +40,14 @@ const DashboardItem = ({ setActiveTab }) => {
       // Fetch all statistics in parallel - using getFullList for accurate counts
       const [casesResult, videosResult, photosResult, membersResult] =
         await Promise.all([
-          pb.collection("Cases").getFullList({
-            filter: `organisation = "${organization.id}"`,
-          }),
-          pb.collection("CctvFootage").getFullList({
-            filter: `organisation = "${organization.id}"`,
-            sort: "-created",
-          }),
-          pb.collection("ReferencePhoto").getFullList({
-            filter: `organisation = "${organization.id}"`,
-            sort: "-created",
-          }),
-          pb.collection("OrganisationMembers").getFullList({
-            filter: `organisation = "${organization.id}"`,
-          }),
+          pb.collection("Cases").getFullList(),
+          pb.collection("CctvFootage").getFullList(),
+          pb.collection("ReferencePhoto").getFullList(),
+          pb.collection("OrganisationMembers").getFullList(),
         ]);
 
       // Get recent cases for display
       const recentCasesData = await pb.collection("Cases").getList(1, 5, {
-        filter: `organisation = "${organization.id}"`,
         sort: "-created",
         expand: "video,photo",
       });
@@ -156,39 +145,6 @@ const DashboardItem = ({ setActiveTab }) => {
             </div>
           </div>
         )}
-      </Card>
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-6">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Button
-            className="w-full justify-start h-12"
-            onClick={() => setActiveTab("search")}
-          >
-            <Image className="h-4 w-4 mr-3" />
-            Upload Reference Photo
-          </Button>
-          <Button
-            className="w-full justify-start h-12"
-            onClick={() => setActiveTab("cases")}
-          >
-            <FileText className="h-4 w-4 mr-3" />
-            Create New Case
-          </Button>
-          <Button
-            className="w-full justify-start h-12"
-            onClick={() => setActiveTab("surveillance")}
-          >
-            <Camera className="h-4 w-4 mr-3" />
-            Upload Surveillance Video
-          </Button>
-          <Button
-            className="w-full justify-start h-12"
-            onClick={() => setActiveTab("analytics")}
-          >
-            <BarChart className="h-4 w-4 mr-3" />
-            View Analytics
-          </Button>
-        </div>
       </Card>
 
       {/* Recent Cases */}

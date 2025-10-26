@@ -24,13 +24,14 @@ import {
   UserPlus,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
+import { toast } from "sonner";
 
 const OrganizationSettingsItem = () => {
   const {
     organization,
-    updateOrganization,
+    updateOrgName,
     createMemberInvite,
-    refreshOrganization,
+    updateOrgLogo,
   } = useAuthStore();
   const [isEditingName, setIsEditingName] = useState(false);
   const [orgName, setOrgName] = useState(organization?.name || "");
@@ -39,27 +40,22 @@ const OrganizationSettingsItem = () => {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleNameSave = async () => {
     if (!orgName.trim()) {
-      setError("Organization name cannot be empty");
+      toast.error("Organization name cannot be empty");
       return;
     }
-
     setLoading(true);
-    setError("");
-
     try {
-      await updateOrganization(organization.id, { name: orgName.trim() });
+      await updateOrgName(orgName.trim());
       setIsEditingName(false);
-      setSuccess("Organization name updated successfully");
-      setTimeout(() => setSuccess(""), 3000);
+      setOrgName(organization?.name || "");
+      toast.success("Organization name updated successfully");
     } catch (error) {
-      setError("Failed to update organization name");
+      toast.error("Failed to update organization name");
     } finally {
       setLoading(false);
     }
@@ -67,48 +63,31 @@ const OrganizationSettingsItem = () => {
 
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      // 5MB limit
-      setError("Image size must be less than 5MB");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
     try {
       const formData = new FormData();
       formData.append("logo", file);
-
-      await updateOrganization(organization.id, formData);
-      await refreshOrganization();
-      setSuccess("Organization logo updated successfully");
-      setTimeout(() => setSuccess(""), 3000);
+      await updateOrgLogo(formData);
+      toast.success("Organization logo updated successfully");
     } catch (error) {
-      setError("Failed to update organization logo");
-    } finally {
-      setLoading(false);
+      toast.error("Failed to update organization logo");
     }
   };
 
   const handleCreateInvite = async () => {
     if (!inviteEmail.trim()) {
-      setError("Please enter an email address");
+      toast.error("Please enter an email address");
       return;
     }
 
     setInviteLoading(true);
-    setError("");
 
     try {
       const result = await createMemberInvite(inviteEmail.trim());
       setInviteCode(result.data.id);
       setInviteEmail("");
-      setSuccess("Invite created successfully");
+      toast.success("Invite created successfully");
     } catch (error) {
-      setError("Failed to create invite. Please try again.");
+      toast.error("Failed to create invite. Please try again.");
     } finally {
       setInviteLoading(false);
     }
@@ -118,8 +97,6 @@ const OrganizationSettingsItem = () => {
     setDialogOpen(false);
     setInviteEmail("");
     setInviteCode("");
-    setError("");
-    setSuccess("");
   };
 
   const copyInviteCode = () => {
@@ -131,18 +108,6 @@ const OrganizationSettingsItem = () => {
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Status Messages */}
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-600">{success}</p>
-          </div>
-        )}
 
         {/* Main Content */}
         <div className="max-w-4xl mx-auto">
@@ -352,18 +317,6 @@ const OrganizationSettingsItem = () => {
               />
             </div>
           </div>
-
-          {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-600">{success}</p>
-            </div>
-          )}
 
           {inviteCode && (
             <div className="p-4 bg-muted rounded-lg">

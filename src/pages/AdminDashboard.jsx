@@ -44,7 +44,7 @@ const AdminDashboard = () => {
   const mainItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart },
     { id: "cases", label: "Cases", icon: FileText },
-    { id: "surveillance", label: "Surveillance", icon: Camera },
+    { id: "surveillance", label: "Upload Video", icon: Camera },
     { id: "search", label: "Person Search", icon: Search },
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "alerts", label: "Alerts", icon: AlertCircle },
@@ -86,12 +86,6 @@ const AdminDashboard = () => {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <span className="text-sm font-medium">{user?.email}</span>
-                </div>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout

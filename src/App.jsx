@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
+import LandingPage from "@/pages/LandingPage";
 import OrganizationSelectionPage from "@/pages/OrganizationSelectionPage";
 import JoinOrganizationPage from "@/pages/JoinOrganizationPage";
 import CreateOrganizationPage from "@/pages/CreateOrganizationPage";
@@ -57,6 +58,7 @@ function App() {
     <AuthInitializer>
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
 
         {/* Private routes that require authentication */}
@@ -113,9 +115,8 @@ function App() {
           }
         />
 
-        {/* Default redirects */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Unknown paths → public home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthInitializer>
   );

@@ -16,6 +16,7 @@ import {
   Upload,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Import sidebar item components
 import DashboardItem from "@/components/sidebar-items/DashboardItem";
@@ -72,7 +73,7 @@ const AdminDashboard = () => {
 
       <div className="flex-1 ml-64">
         {/* Header */}
-        <header className="bg-white border-b">
+        <header className="border-b border-border bg-background">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="ml-3">
@@ -86,7 +87,8 @@ const AdminDashboard = () => {
                   {organization?.name}
                 </p>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <ThemeToggle />
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout

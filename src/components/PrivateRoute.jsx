@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import useAuthStore from "@/store/authStore";
+import LoadingPage from "@/pages/LoadingPage";
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuthStore();

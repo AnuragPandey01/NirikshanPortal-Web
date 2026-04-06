@@ -12,7 +12,7 @@ const Sidebar = ({
   return (
     <div
       className={cn(
-        "w-64 bg-white h-screen fixed left-0 top-0 border-r flex flex-col",
+        "w-64 bg-sidebar text-sidebar-foreground h-screen fixed left-0 top-0 border-r border-sidebar-border flex flex-col",
         className
       )}
     >
@@ -57,7 +57,7 @@ const Sidebar = ({
 
       {/* User Settings Section at Bottom */}
       {userSettingsItems.length > 0 && (
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-sidebar-border">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             User
           </h3>

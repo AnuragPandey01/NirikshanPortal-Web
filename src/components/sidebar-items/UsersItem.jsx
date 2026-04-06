@@ -4,23 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  UserPlus,
   Copy,
   User,
   Shield,
   UserCog,
-  MoreVertical,
-  ChevronDown,
   RefreshCw,
   Trash2,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 
-const roleColors = {
-  admin: "bg-purple-100 text-purple-800",
-  member: "bg-orange-100 text-orange-800",
+const roleBadgeClass = {
+  admin: "bg-chart-5/15 text-chart-5 ring-1 ring-chart-5/25 dark:bg-chart-5/20",
+  member: "bg-chart-4/15 text-chart-4 ring-1 ring-chart-4/25 dark:bg-chart-4/20",
 };
+
+function statusBadgeClass(status) {
+  if (status === "active") {
+    return "bg-chart-2/15 text-chart-2 ring-1 ring-chart-2/25 dark:bg-chart-2/20";
+  }
+  if (status === "pending") {
+    return "bg-chart-4/15 text-chart-4 ring-1 ring-chart-4/25 dark:bg-chart-4/20";
+  }
+  return "bg-muted text-muted-foreground ring-1 ring-border";
+}
 
 const availableRoles = ["admin", "member"];
 
@@ -37,7 +44,6 @@ const UsersItem = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingMember, setEditingMember] = useState(null);
-  const [selectedRole, setSelectedRole] = useState("");
   const [actionLoading, setActionLoading] = useState({});
 
   // Fetch members on component mount
@@ -135,33 +141,33 @@ const UsersItem = () => {
       </div>
 
       {/* Member Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="p-4 bg-blue-50 rounded-lg">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-lg border border-border bg-chart-1/10 p-4 dark:bg-chart-1/15">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-blue-600" />
-            <span className="font-medium">Total Members</span>
+            <User className="h-5 w-5 shrink-0 text-chart-1" />
+            <span className="font-medium text-foreground">Total Members</span>
           </div>
-          <p className="text-2xl font-bold mt-2">
+          <p className="mt-2 text-2xl font-bold tabular-nums text-chart-1">
             {loading ? "..." : members.length}
           </p>
         </div>
-        <div className="p-4 bg-green-50 rounded-lg">
+        <div className="rounded-lg border border-border bg-chart-2/10 p-4 dark:bg-chart-2/15">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-green-600" />
-            <span className="font-medium">Active Members</span>
+            <Shield className="h-5 w-5 shrink-0 text-chart-2" />
+            <span className="font-medium text-foreground">Active Members</span>
           </div>
-          <p className="text-2xl font-bold mt-2">
+          <p className="mt-2 text-2xl font-bold tabular-nums text-chart-2">
             {loading
               ? "..."
               : members.filter((m) => m.status === "active").length}
           </p>
         </div>
-        <div className="p-4 bg-purple-50 rounded-lg">
+        <div className="rounded-lg border border-border bg-chart-5/10 p-4 dark:bg-chart-5/15">
           <div className="flex items-center gap-2">
-            <UserCog className="h-5 w-5 text-purple-600" />
-            <span className="font-medium">Pending Invites</span>
+            <UserCog className="h-5 w-5 shrink-0 text-chart-5" />
+            <span className="font-medium text-foreground">Pending Invites</span>
           </div>
-          <p className="text-2xl font-bold mt-2">
+          <p className="mt-2 text-2xl font-bold tabular-nums text-chart-5">
             {loading
               ? "..."
               : members.filter((m) => m.status === "pending").length}
@@ -172,61 +178,65 @@ const UsersItem = () => {
       {/* Members Table */}
       <div className="overflow-x-auto">
         {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-500">Loading members...</span>
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading members...</span>
           </div>
         ) : members.length === 0 ? (
-          <div className="text-center py-8">
-            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No members found</p>
-            <p className="text-sm text-gray-400">
+          <div className="py-8 text-center">
+            <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground/60" />
+            <p className="text-muted-foreground">No members found</p>
+            <p className="mt-1 text-sm text-muted-foreground/80">
               Invite members to get started
             </p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-border">
             <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Member
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Role
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Last Active
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {members.map((member) => (
                 <tr key={member.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center">
-                      <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
-                        <User className="h-4 w-4 text-gray-600" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                        <User className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="ml-3">
-                        <p className="font-medium">{member.email}</p>
+                        <p className="font-medium text-foreground">
+                          {member.email}
+                        </p>
                         {member.name && member.name !== "Unknown" && (
-                          <p className="text-sm text-gray-500">{member.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {member.name}
+                          </p>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-6 py-4">
                     {editingMember === member.id ? (
                       <div className="relative">
                         <select
-                          className="w-full rounded-md border border-gray-300 bg-white py-1 pl-3 pr-8 text-sm"
-                          value={selectedRole || member.role}
+                          className="w-full rounded-md border border-input bg-background py-1.5 pl-3 pr-8 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                          value={member.role}
                           onChange={(e) =>
                             handleRoleChange(member.id, e.target.value)
                           }
@@ -241,8 +251,9 @@ const UsersItem = () => {
                       </div>
                     ) : (
                       <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          roleColors[member.role]
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                          roleBadgeClass[member.role] ??
+                          "bg-muted text-muted-foreground ring-1 ring-border"
                         }`}
                       >
                         {member.role.charAt(0).toUpperCase() +
@@ -250,24 +261,20 @@ const UsersItem = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-6 py-4">
                     <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        member.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : member.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
+                      className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
+                        member.status
+                      )}`}
                     >
                       {member.status.charAt(0).toUpperCase() +
                         member.status.slice(1)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                     {formatDate(member.lastActive)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
                     <div className="flex space-x-2">
                       <Button
                         variant="ghost"
@@ -289,7 +296,7 @@ const UsersItem = () => {
                           onClick={() => handleRemoveMember(member.id)}
                           disabled={actionLoading[member.id]}
                           title="Remove Member"
-                          className="text-red-600 hover:text-red-700"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -304,7 +311,7 @@ const UsersItem = () => {
       </div>
 
       {/* Organization ID Section */}
-      <div className="mt-6 p-4 border rounded-lg">
+      <div className="mt-6 rounded-lg border border-border p-4">
         <div className="flex justify-between items-center">
           <div>
             <h4 className="font-medium">Organization ID</h4>

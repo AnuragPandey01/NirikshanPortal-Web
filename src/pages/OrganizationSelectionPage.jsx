@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Building2, Users, Plus, ArrowRight } from "lucide-react";
+import { FixedThemeToggle } from "@/components/fixed-theme-toggle";
 
 const OrganizationSelectionPage = () => {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -19,11 +20,12 @@ const OrganizationSelectionPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
+    <div className="relative min-h-screen flex items-center justify-center bg-muted">
+      <FixedThemeToggle />
       <div className="max-w-md w-full px-6">
         <div className="text-center mb-8">
           <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-            <Building2 className="h-6 w-6 text-white" />
+            <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight mb-2">
             Welcome to Nirikshan Portal

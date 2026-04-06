@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import useAuthStore from "@/store/authStore";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { AuthPageBackdrop } from "@/components/landing/PortalGraphics";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -65,16 +67,31 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
-      <div className="max-w-sm w-full flex flex-col items-center border rounded-lg px-6 py-8 shadow-sm/5 bg-card">
-        <div className="h-9 w-9 bg-primary rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-lg">N</span>
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-muted px-4 py-8">
+      <AuthPageBackdrop />
+      <div className="fixed right-4 top-4 z-[1] sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
+      <Link
+        to="/"
+        className="relative z-[1] mb-6 text-sm text-muted-foreground hover:text-primary transition-colors"
+      >
+        ← Back to home
+      </Link>
+      <div className="relative z-[1] max-w-sm w-full flex flex-col items-center border border-border/90 rounded-xl px-6 py-8 shadow-lg shadow-primary/5 bg-card/95 backdrop-blur-sm">
+        <div className="h-9 w-9 bg-primary rounded-lg flex items-center justify-center shadow-sm ring-2 ring-primary/15">
+          <span className="text-primary-foreground font-bold text-lg">N</span>
         </div>
         <p className="mt-4 text-xl font-semibold tracking-tight">
           Log in to Nirikshan Portal
         </p>
 
-        <Button className="mt-8 w-full gap-3" onClick={handleGoogleLogin}>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-8 w-full gap-3 border-border bg-background font-medium text-foreground shadow-xs hover:bg-muted/70 dark:hover:bg-muted/50"
+          onClick={handleGoogleLogin}
+        >
           <GoogleLogo />
           Continue with Google
         </Button>

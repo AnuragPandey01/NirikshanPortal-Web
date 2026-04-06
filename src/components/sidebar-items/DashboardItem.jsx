@@ -112,39 +112,45 @@ const DashboardItem = ({ setActiveTab }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+            <div className="flex justify-between items-center rounded-lg border border-border bg-chart-1/10 p-4 dark:bg-chart-1/15">
               <div className="flex items-center space-x-3">
-                <FileText className="h-5 w-5 text-blue-600" />
-                <span className="font-medium">Total Cases</span>
+                <FileText className="h-5 w-5 shrink-0 text-chart-1" />
+                <span className="font-medium text-foreground">Total Cases</span>
               </div>
-              <span className="text-2xl font-bold text-blue-600">
+              <span className="text-2xl font-bold tabular-nums text-chart-1">
                 {stats.totalCases}
               </span>
             </div>
-            <div className="flex justify-between items-center p-4 bg-purple-50 rounded-lg">
+            <div className="flex justify-between items-center rounded-lg border border-border bg-chart-2/10 p-4 dark:bg-chart-2/15">
               <div className="flex items-center space-x-3">
-                <Camera className="h-5 w-5 text-purple-600" />
-                <span className="font-medium">Surveillance Videos</span>
+                <Camera className="h-5 w-5 shrink-0 text-chart-2" />
+                <span className="font-medium text-foreground">
+                  Surveillance Videos
+                </span>
               </div>
-              <span className="text-2xl font-bold text-purple-600">
+              <span className="text-2xl font-bold tabular-nums text-chart-2">
                 {stats.surveillanceVideos}
               </span>
             </div>
-            <div className="flex justify-between items-center p-4 bg-orange-50 rounded-lg">
+            <div className="flex justify-between items-center rounded-lg border border-border bg-chart-4/10 p-4 dark:bg-chart-4/15">
               <div className="flex items-center space-x-3">
-                <Image className="h-5 w-5 text-orange-600" />
-                <span className="font-medium">Reference Photos</span>
+                <Image className="h-5 w-5 shrink-0 text-chart-4" />
+                <span className="font-medium text-foreground">
+                  Reference Photos
+                </span>
               </div>
-              <span className="text-2xl font-bold text-orange-600">
+              <span className="text-2xl font-bold tabular-nums text-chart-4">
                 {stats.referencePhotos}
               </span>
             </div>
-            <div className="flex justify-between items-center p-4 bg-indigo-50 rounded-lg">
+            <div className="flex justify-between items-center rounded-lg border border-border bg-chart-3/10 p-4 dark:bg-chart-3/15">
               <div className="flex items-center space-x-3">
-                <Users className="h-5 w-5 text-indigo-600" />
-                <span className="font-medium">Organization Members</span>
+                <Users className="h-5 w-5 shrink-0 text-chart-3" />
+                <span className="font-medium text-foreground">
+                  Organization Members
+                </span>
               </div>
-              <span className="text-2xl font-bold text-indigo-600">
+              <span className="text-2xl font-bold tabular-nums text-chart-3">
                 {stats.organizationMembers}
               </span>
             </div>
@@ -176,37 +182,37 @@ const DashboardItem = ({ setActiveTab }) => {
             {recentCases.map((caseItem) => (
               <div
                 key={caseItem.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-4 transition-colors hover:bg-muted/70"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-3">
-                    <FileText className="h-5 w-5 text-blue-600 shrink-0" />
-                    <span className="font-medium text-sm truncate">
+                    <FileText className="h-5 w-5 shrink-0 text-chart-1" />
+                    <span className="truncate text-sm font-medium text-foreground">
                       {caseItem.name || `Case #${caseItem.id.slice(-8)}`}
                     </span>
                   </div>
                   {caseItem.description && (
-                    <p className="text-xs text-gray-600 mt-2 truncate">
+                    <p className="mt-2 truncate text-xs text-muted-foreground">
                       {caseItem.description}
                     </p>
                   )}
-                  <div className="flex items-center text-xs text-gray-500 mt-2">
-                    <Calendar className="h-3 w-3 mr-1" />
+                  <div className="mt-2 flex items-center text-xs text-muted-foreground">
+                    <Calendar className="mr-1 h-3 w-3" />
                     <span>
                       {new Date(caseItem.created).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3 ml-4">
+                <div className="ml-4 flex items-center space-x-3">
                   {caseItem.expand?.video && (
-                    <div className="flex items-center text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                      <Camera className="h-3 w-3 mr-1" />
+                    <div className="flex items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
+                      <Camera className="mr-1 h-3 w-3" />
                       <span>Video</span>
                     </div>
                   )}
                   {caseItem.expand?.photo && (
-                    <div className="flex items-center text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                      <Image className="h-3 w-3 mr-1" />
+                    <div className="flex items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
+                      <Image className="mr-1 h-3 w-3" />
                       <span>Photo</span>
                     </div>
                   )}
@@ -216,7 +222,7 @@ const DashboardItem = ({ setActiveTab }) => {
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground/60" />
             <p className="text-sm font-medium">No cases yet</p>
             <p className="text-xs mt-2 mb-4">
               Create your first case to get started with face recognition

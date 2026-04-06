@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Users, CheckCircle } from "lucide-react";
 import useAuthStore from "@/store/authStore";
+import { FixedThemeToggle } from "@/components/fixed-theme-toggle";
 
 const JoinOrganizationPage = () => {
   const [inviteCode, setInviteCode] = useState("");
@@ -54,7 +55,8 @@ const JoinOrganizationPage = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="relative min-h-screen flex items-center justify-center bg-muted">
+        <FixedThemeToggle />
         <Card className="max-w-sm w-full p-8 text-center">
           <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="h-8 w-8 text-green-600" />
@@ -71,7 +73,8 @@ const JoinOrganizationPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
+    <div className="relative min-h-screen flex items-center justify-center bg-muted">
+      <FixedThemeToggle />
       <div className="max-w-sm w-full">
         <Card className="p-6">
           <div className="flex items-center mb-6">

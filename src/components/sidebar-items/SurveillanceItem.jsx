@@ -23,6 +23,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import pb from "@/lib/pb";
+import { PB_COLLECTIONS } from "@/lib/pbCollections";
 import useAuthStore from "@/store/authStore";
 
 const SurveillanceItem = () => {
@@ -43,7 +44,7 @@ const SurveillanceItem = () => {
     if (!organization?.id) return;
     
     try {
-      const records = await pb.collection('CctvFootage')
+      const records = await pb.collection(PB_COLLECTIONS.CCTV_FOOTAGE)
         .getList(1, 50, {
           filter: `organisation = "${organization.id}"`,
           sort: '-created'
@@ -105,7 +106,9 @@ const SurveillanceItem = () => {
         formData.append('thumbnail', thumbnail);
         formData.append('organisation', organization?.id);
 
-          const record = await pb.collection('CctvFootage').create(formData);
+          const record = await pb
+            .collection(PB_COLLECTIONS.CCTV_FOOTAGE)
+            .create(formData);
         await fetchVideos(); // Refresh the video list
         return 'Video uploaded successfully';
       } catch (error) {
@@ -128,7 +131,7 @@ const SurveillanceItem = () => {
 
     const deletePromise = async () => {
       try {
-        await pb.collection('CctvFootage').delete(videoId);
+        await pb.collection(PB_COLLECTIONS.CCTV_FOOTAGE).delete(videoId);
         await fetchVideos(); // Refresh the list after deletion
         return 'Video deleted successfully';
       } catch (error) {

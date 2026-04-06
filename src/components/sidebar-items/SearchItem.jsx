@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Search, Upload, Image, Loader2, Trash2, Plus } from "lucide-react";
 import pb from "@/lib/pb";
+import { PB_COLLECTIONS } from "@/lib/pbCollections";
 import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 
@@ -21,10 +22,12 @@ const SearchItem = () => {
     if (!organization?.id) return;
     
     try {
-      const records = await pb.collection('ReferencePhoto').getList(1, 50, {
-        filter: `organisation = "${organization.id}"`,
-        sort: '-created'
-      });
+      const records = await pb
+        .collection(PB_COLLECTIONS.REFERENCE_PHOTO)
+        .getList(1, 50, {
+          filter: `organisation = "${organization.id}"`,
+          sort: "-created",
+        });
       
       setReferencePhotos(records.items || []);
     } catch (error) {
@@ -64,7 +67,9 @@ const SearchItem = () => {
 
         await toast.promise(
           (async () => {
-            await pb.collection('ReferencePhoto').create(formData);
+            await pb
+              .collection(PB_COLLECTIONS.REFERENCE_PHOTO)
+              .create(formData);
             // Fetch updated list after each successful upload
             await fetchReferencePhotos();
             return `${file.name} uploaded successfully`;
@@ -88,7 +93,7 @@ const SearchItem = () => {
 
     const deletePromise = async () => {
       try {
-        await pb.collection('ReferencePhoto').delete(photoId);
+        await pb.collection(PB_COLLECTIONS.REFERENCE_PHOTO).delete(photoId);
         await fetchReferencePhotos(); // Refresh the list
         return 'Reference photo deleted successfully';
       } catch (error) {

@@ -29,6 +29,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import pb from "@/lib/pb";
+import { PB_COLLECTIONS } from "@/lib/pbCollections";
 import useAuthStore from "@/store/authStore";
 
 const CasesItem = () => {
@@ -74,7 +75,7 @@ const CasesItem = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const resultList = await pb.collection("Cases").getFullList({
+      const resultList = await pb.collection(PB_COLLECTIONS.CASES).getFullList({
         expand: "video,photo",
       });
       console.log("cases", resultList);
@@ -94,15 +95,17 @@ const CasesItem = () => {
 
     try {
       // Fetch videos - match SurveillanceItem exactly
-      const videoRecords = await pb.collection("CctvFootage").getList(1, 50, {
-        filter: `organisation = "${organization.id}"`,
-        sort: "-created",
-      });
+      const videoRecords = await pb
+        .collection(PB_COLLECTIONS.CCTV_FOOTAGE)
+        .getList(1, 50, {
+          filter: `organisation = "${organization.id}"`,
+          sort: "-created",
+        });
       setUploadedVideos(videoRecords.items);
 
       // Fetch reference photos - match SearchItem exactly
       const photoRecords = await pb
-        .collection("ReferencePhoto")
+        .collection(PB_COLLECTIONS.REFERENCE_PHOTO)
         .getList(1, 50, {
           filter: `organisation = "${organization.id}"`,
           sort: "-created",
@@ -151,7 +154,7 @@ const CasesItem = () => {
         created_at: new Date().toISOString(),
       };
 
-      caseRecord = await pb.collection("Cases").create(caseData);
+      caseRecord = await pb.collection(PB_COLLECTIONS.CASES).create(caseData);
       toast.success("Case created successfully");
       await fetchData();
     } catch (error) {
@@ -226,7 +229,7 @@ const CasesItem = () => {
           setProcessingStage("✅ Analysis complete!");
 
           // Update case record with results
-          pb.collection("Cases")
+          pb.collection(PB_COLLECTIONS.CASES)
             .update(caseRecord.id, {
               status: "completed",
               matches_count: data.matches_count,
@@ -250,7 +253,7 @@ const CasesItem = () => {
           toast.error(`Analysis failed: ${data.detail}`);
 
           // Update case record with error
-          pb.collection("Cases")
+          pb.collection(PB_COLLECTIONS.CASES)
             .update(caseRecord.id, { status: "failed" })
             .catch((err) => console.error("Error updating case:", err));
 
@@ -322,7 +325,7 @@ const CasesItem = () => {
 
     const deletePromise = async () => {
       try {
-        await pb.collection("Cases").delete(caseId);
+        await pb.collection(PB_COLLECTIONS.CASES).delete(caseId);
         await fetchData(); // Refresh the list after deletion
         return "Case deleted successfully";
       } catch (error) {

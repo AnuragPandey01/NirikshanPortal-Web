@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import pb from "@/lib/pb";
+import { PB_COLLECTIONS } from "@/lib/pbCollections";
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -14,7 +15,7 @@ const useAuthStore = create((set, get) => ({
       // Check if user is already authenticated
       if (pb.authStore.isValid) {
         const userProfile = await pb
-          .collection("userProfile")
+          .collection(PB_COLLECTIONS.USER_PROFILE)
           .getFirstListItem();
         const hasOrg = userProfile.organisation_id !== "";
 
@@ -23,12 +24,12 @@ const useAuthStore = create((set, get) => ({
           try {
             // Fetch organization details
             organization = await pb
-              .collection("Organisation")
+              .collection(PB_COLLECTIONS.ORGANISATION)
               .getOne(userProfile.organisation_id);
 
             // Fetch member count
             const members = await pb
-              .collection("OrganisationMembers")
+              .collection(PB_COLLECTIONS.ORGANISATION_MEMBERS)
               .getList(1, 1);
             organization.memberCount = members.totalItems;
             console.log("organization", organization);
@@ -58,7 +59,7 @@ const useAuthStore = create((set, get) => ({
       //try creating a user
       try {
         const randomPassword = Math.random().toString(36).substring(2, 15);
-        await pb.collection("users").create({
+        await pb.collection(PB_COLLECTIONS.USERS).create({
           email: email,
           name: name,
           password: randomPassword,
@@ -69,7 +70,7 @@ const useAuthStore = create((set, get) => ({
       }
 
       //send OTP
-      const req = await pb.collection("users").requestOTP(email);
+      const req = await pb.collection(PB_COLLECTIONS.USERS).requestOTP(email);
 
       return { success: true, data: req };
     } catch (error) {
@@ -83,7 +84,7 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true });
     try {
       // Verify OTP and authenticate
-      await pb.collection("users").authWithOTP(otpId, otp);
+      await pb.collection(PB_COLLECTIONS.USERS).authWithOTP(otpId, otp);
 
       await get().init();
 
@@ -99,7 +100,9 @@ const useAuthStore = create((set, get) => ({
   loginWithGoogle: async () => {
     set({ loading: true });
     try {
-      await pb.collection("users").authWithOAuth2({ provider: "google" });
+      await pb.collection(PB_COLLECTIONS.USERS).authWithOAuth2({
+        provider: "google",
+      });
 
       await get().init();
 
@@ -118,12 +121,15 @@ const useAuthStore = create((set, get) => ({
       const { user, init } = get();
 
       // Add user as member
-      await pb.collection("OrganisationMembers").update(inviteCode, {
-        organisation: orgId,
-        member: user.user_id,
-        role: "member",
-        status: "active",
-      });
+      await pb.collection(PB_COLLECTIONS.ORGANISATION_MEMBERS).update(
+        inviteCode,
+        {
+          organisation: orgId,
+          member: user.user_id,
+          role: "member",
+          status: "active",
+        }
+      );
 
       await init();
 
@@ -142,13 +148,13 @@ const useAuthStore = create((set, get) => ({
       const { user, init } = get();
 
       // Create organization
-      const org = await pb.collection("Organisation").create({
+      const org = await pb.collection(PB_COLLECTIONS.ORGANISATION).create({
         name: orgName,
         created_by: user.user_id,
       });
 
       // Add user as admin
-      await pb.collection("OrganisationMembers").create({
+      await pb.collection(PB_COLLECTIONS.ORGANISATION_MEMBERS).create({
         organisation: org.id,
         member: user.user_id,
         role: "admin",
@@ -171,7 +177,10 @@ const useAuthStore = create((set, get) => ({
         name: name,
         created_by: user.user_id,
       };
-      await pb.collection("Organisation").update(organization.id, data);
+      await pb.collection(PB_COLLECTIONS.ORGANISATION).update(
+        organization.id,
+        data
+      );
       set({ organization: { ...organization, name: name } });
       return { success: true };
     } catch (error) {
@@ -190,7 +199,7 @@ const useAuthStore = create((set, get) => ({
         created_by: user.user_id,
       };
       const updatedOrg = await pb
-        .collection("Organisation")
+        .collection(PB_COLLECTIONS.ORGANISATION)
         .update(organization.id, data);
       set({ organization: { ...organization, logo: updatedOrg.logo } });
       return { success: true };
@@ -207,18 +216,20 @@ const useAuthStore = create((set, get) => ({
 
       // Create invite record
       const record = await pb
-        .collection("users")
+        .collection(PB_COLLECTIONS.USERS)
         .getFirstListItem(`email="${email.trim()}"`);
 
       if (!record) {
         throw new Error("User not found");
       }
-      const invite = await pb.collection("OrganisationMembers").create({
-        organisation: organization.id,
-        member: record.id,
-        role: "member",
-        status: "pending",
-      });
+      const invite = await pb
+        .collection(PB_COLLECTIONS.ORGANISATION_MEMBERS)
+        .create({
+          organisation: organization.id,
+          member: record.id,
+          role: "member",
+          status: "pending",
+        });
 
       return { success: true, data: invite };
     } catch (error) {
@@ -233,12 +244,12 @@ const useAuthStore = create((set, get) => ({
     if (user?.organisation_id) {
       try {
         const organization = await pb
-          .collection("Organisation")
+          .collection(PB_COLLECTIONS.ORGANISATION)
           .getOne(user.organisation_id);
 
         // Fetch member count
         const members = await pb
-          .collection("OrganisationMembers")
+          .collection(PB_COLLECTIONS.ORGANISATION_MEMBERS)
           .getList(1, 1, {
             filter: `organisation = "${user.organisation_id}" && status = "active"`,
           });
@@ -258,7 +269,7 @@ const useAuthStore = create((set, get) => ({
 
     try {
       const members = await pb
-        .collection("OrganisationMembers")
+        .collection(PB_COLLECTIONS.ORGANISATION_MEMBERS)
         .getList(1, 50, {
           filter: `organisation = "${user.organisation_id}"`,
           expand: "member",
@@ -282,7 +293,7 @@ const useAuthStore = create((set, get) => ({
   // Update member role
   updateMemberRole: async (memberId, newRole) => {
     try {
-      await pb.collection("OrganisationMembers").update(memberId, {
+      await pb.collection(PB_COLLECTIONS.ORGANISATION_MEMBERS).update(memberId, {
         role: newRole,
       });
       return { success: true };
@@ -295,7 +306,7 @@ const useAuthStore = create((set, get) => ({
   // Remove member from organization
   removeMember: async (memberId) => {
     try {
-      await pb.collection("OrganisationMembers").delete(memberId);
+      await pb.collection(PB_COLLECTIONS.ORGANISATION_MEMBERS).delete(memberId);
       return { success: true };
     } catch (error) {
       console.error("Error removing member:", error);

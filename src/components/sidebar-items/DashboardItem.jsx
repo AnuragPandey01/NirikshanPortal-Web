@@ -12,6 +12,7 @@ import {
   Calendar,
 } from "lucide-react";
 import pb from "@/lib/pb";
+import { PB_COLLECTIONS } from "@/lib/pbCollections";
 import useAuthStore from "@/store/authStore";
 
 const DashboardItem = ({ setActiveTab }) => {
@@ -40,17 +41,21 @@ const DashboardItem = ({ setActiveTab }) => {
       // Fetch all statistics in parallel - using getFullList for accurate counts
       const [casesResult, videosResult, photosResult, membersResult] =
         await Promise.all([
-          pb.collection("Cases").getFullList(),
-          pb.collection("CctvFootage").getFullList(),
-          pb.collection("ReferencePhoto").getFullList(),
-          pb.collection("OrganisationMembers").getFullList(),
+          pb.collection(PB_COLLECTIONS.CASES).getFullList(),
+          pb.collection(PB_COLLECTIONS.CCTV_FOOTAGE).getFullList(),
+          pb.collection(PB_COLLECTIONS.REFERENCE_PHOTO).getFullList(),
+          pb.collection(PB_COLLECTIONS.ORGANISATION_MEMBERS).getFullList(),
         ]);
 
       // Get recent cases for display
-      const recentCasesData = await pb.collection("Cases").getList(1, 5, {
-        sort: "-created",
-        expand: "video,photo",
-      });
+      const recentCasesData = await pb.collection(PB_COLLECTIONS.CASES).getList(
+        1,
+        5,
+        {
+          sort: "-created",
+          expand: "video,photo",
+        }
+      );
 
       // Debug logging to check the actual counts
       console.log("Dashboard stats:", {

@@ -186,6 +186,9 @@ const CasesItem = () => {
           detector_backend: "mtcnn",
           threshold: 0.3,
           frame_skip: 60,
+          refine_around_matches: true,
+          progress_every_n_frames: 24,
+          motion_filter: true
         })
       );
     };

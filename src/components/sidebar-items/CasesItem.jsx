@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,18 @@ import {
 } from "lucide-react";
 import pb from "@/lib/pb";
 import { PB_COLLECTIONS } from "@/lib/pbCollections";
+import { enqueueAnalysisJob } from "@/lib/analysisApi";
 import useAuthStore from "@/store/authStore";
+
+const DEFAULT_ANALYSIS_PARAMS = {
+  model_name: "Facenet512",
+  detector_backend: "mtcnn",
+  threshold: 0.3,
+  frame_skip: 60,
+  refine_around_matches: true,
+  progress_every_n_frames: 24,
+  motion_filter: true,
+};
 
 const CasesItem = () => {
   const { organization } = useAuthStore();
@@ -34,45 +45,78 @@ const CasesItem = () => {
   const [referencePhotos, setReferencePhotos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState(0);
-  const [processingStage, setProcessingStage] = useState("");
-  const [outputVideo, setOutputVideo] = useState(null);
-  const [lastAnalyzedCase, setLastAnalyzedCase] = useState(null);
+  const [enqueueSubmitting, setEnqueueSubmitting] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(false);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [caseName, setCaseName] = useState("");
   const [caseDescription, setCaseDescription] = useState("");
-  const [matches, setMatches] = useState([]);
-  const [stats, setStats] = useState({
-    currentFrame: 0,
-    totalFrames: 0,
-    matchesFound: 0,
-  });
-  const wsRef = useRef(null);
 
   useEffect(() => {
     fetchData();
   }, [organization]);
 
-  // Cleanup WebSocket on unmount
   useEffect(() => {
+    if (!organization?.id) return undefined;
+
+    let cancelled = false;
+    let unsubscribe = null;
+
+    pb.collection(PB_COLLECTIONS.CASES)
+      .subscribe("*", (e) => {
+        if (cancelled) return;
+        const r = e.record;
+        if (r.organisation !== organization.id) return;
+
+        setCases((prev) => {
+          if (e.action === "delete") {
+            return prev.filter((c) => c.id !== r.id);
+          }
+          const idx = prev.findIndex((c) => c.id === r.id);
+          const prevRow = idx >= 0 ? prev[idx] : null;
+          const merged =
+            prevRow?.expand &&
+            !(r.expand?.video || r.expand?.photo) &&
+            (prevRow.expand?.video || prevRow.expand?.photo)
+              ? { ...r, expand: prevRow.expand }
+              : r;
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = merged;
+            return next;
+          }
+          return [...prev, merged];
+        });
+      })
+      .then((unsub) => {
+        if (cancelled) {
+          if (typeof unsub === "function") unsub();
+        } else {
+          unsubscribe = unsub;
+        }
+      })
+      .catch(() => {});
+
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      cancelled = true;
+      if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, []);
+  }, [organization?.id]);
 
   const fetchData = async () => {
+    if (!organization?.id) {
+      setCases([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const resultList = await pb.collection(PB_COLLECTIONS.CASES).getFullList({
         expand: "video,photo",
+        filter: `organisation = "${organization.id}"`,
+        sort: "-created",
       });
-      console.log("cases", resultList);
       setCases(resultList);
     } catch (error) {
       console.error("Error fetching cases:", error);
@@ -105,7 +149,7 @@ const CasesItem = () => {
           sort: "-created",
         });
       setReferencePhotos(photoRecords.items || []);
-    } catch (error) {
+    } catch {
       toast.error("Failed to load videos and photos");
     } finally {
       setVideosLoading(false);
@@ -128,167 +172,59 @@ const CasesItem = () => {
       toast.error("Please select both a video and a reference photo");
       return;
     }
+    if (!pb.authStore.token) {
+      toast.error("You must be signed in to run analysis");
+      return;
+    }
 
-    setProcessing(true);
-    setProcessingProgress(0);
-    setProcessingStage("Initializing analysis...");
-    setMatches([]);
-    setStats({ currentFrame: 0, totalFrames: 0, matchesFound: 0 });
-
-    // Create case record first
-    let caseRecord;
+    setEnqueueSubmitting(true);
     try {
-      const caseData = {
+      const caseRecord = await pb.collection(PB_COLLECTIONS.CASES).create({
         name: caseName,
         description: caseDescription,
         video: selectedVideo.id,
         photo: selectedPhoto.id,
         organisation: organization?.id,
-        status: "processing",
-        created_at: new Date().toISOString(),
-      };
+        status: "queued",
+      });
 
-      caseRecord = await pb.collection(PB_COLLECTIONS.CASES).create(caseData);
-      toast.success("Case created successfully");
+      await enqueueAnalysisJob(pb.authStore.token, {
+        case_id: caseRecord.id,
+        ...DEFAULT_ANALYSIS_PARAMS,
+      });
+
+      toast.success(
+        "Analysis queued. Progress is saved on the case — safe to leave this page."
+      );
       await fetchData();
+      setShowCreateForm(false);
+      setSelectedVideo(null);
+      setSelectedPhoto(null);
+      setCaseName("");
+      setCaseDescription("");
     } catch (error) {
-      toast.error("Failed to create case");
-      setProcessing(false);
+      console.error(error);
+      toast.error(error?.message || "Failed to queue analysis");
+    } finally {
+      setEnqueueSubmitting(false);
+    }
+  };
+
+  const retryEnqueue = async (caseRow) => {
+    if (!pb.authStore.token) {
+      toast.error("You must be signed in");
       return;
     }
-
-    // Get file URLs from PocketBase
-    const videoUrl = pb.getFileUrl(selectedVideo, selectedVideo.video);
-    const photoUrl = pb.getFileUrl(selectedPhoto, selectedPhoto.photo);
-
-    // Connect to WebSocket
-    const wsUrl = "ws://localhost:8000/ws/detect-faces";
-    const ws = new WebSocket(wsUrl);
-
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("Connected to WebSocket");
-      setProcessingStage("✓ Connected to server");
-
-      // Send parameters to WebSocket
-      ws.send(
-        JSON.stringify({
-          video_url: videoUrl,
-          photo_url: photoUrl,
-          case_id: caseRecord.id,
-          model_name: "Facenet512",
-          detector_backend: "mtcnn",
-          threshold: 0.3,
-          frame_skip: 60,
-          refine_around_matches: true,
-          progress_every_n_frames: 24,
-          motion_filter: true,
-        })
-      );
-    };
-
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const msgType = data.type;
-
-        if (msgType === "status") {
-          setProcessingStage(`📋 ${data.message}`);
-        } else if (msgType === "video_info") {
-          setStats((prev) => ({
-            ...prev,
-            totalFrames: data.total_frames,
-          }));
-          setProcessingStage(`🎥 Processing ${data.total_frames} frames...`);
-        } else if (msgType === "progress") {
-          const percentage = data.percentage;
-          setProcessingProgress(percentage);
-          setStats({
-            currentFrame: data.current_frame,
-            totalFrames: data.total_frames,
-            matchesFound: data.matches_found,
-          });
-          setProcessingStage(
-            `Processing: ${data.current_frame}/${data.total_frames} frames`
-          );
-        } else if (msgType === "match") {
-          setMatches((prev) => [
-            ...prev,
-            {
-              frameNumber: data.frame_number,
-              timestamp: data.timestamp,
-              similarity: data.similarity_score,
-              frameBase64: data.frame_base64,
-              face_bbox: data.face_bbox ?? null,
-            },
-          ]);
-        } else if (msgType === "complete") {
-          setProcessingProgress(100);
-          setProcessingStage("✅ Analysis complete!");
-
-          // Update case record with results
-          pb.collection(PB_COLLECTIONS.CASES)
-            .update(caseRecord.id, {
-              status: "completed",
-              matches_count: data.matches_count,
-              processed_frames: data.processed_frames,
-            })
-            .catch((err) => console.error("Error updating case:", err));
-
-          setOutputVideo({
-            matches: data.matches_count,
-            confidence: data.matches_count > 0 ? 0.8 : 0,
-            processedFrames: data.processed_frames,
-          });
-          setLastAnalyzedCase({
-            ...caseRecord,
-            matches_count: data.matches_count,
-            processed_frames: data.processed_frames,
-            expand: {
-              video: selectedVideo,
-              photo: selectedPhoto,
-            },
-          });
-
-          toast.success(
-            `Analysis complete! Found ${data.matches_count} matches in ${data.processed_frames} processed frames.`
-          );
-          setProcessing(false);
-          await fetchData();
-        } else if (msgType === "error") {
-          setProcessingStage(`❌ Error: ${data.detail}`);
-          toast.error(`Analysis failed: ${data.detail}`);
-
-          // Update case record with error
-          pb.collection(PB_COLLECTIONS.CASES)
-            .update(caseRecord.id, { status: "failed" })
-            .catch((err) => console.error("Error updating case:", err));
-
-          setProcessing(false);
-          await fetchData();
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setProcessingStage(
-        "❌ Connection error. Make sure the server is running."
-      );
-      toast.error("Failed to connect to analysis server");
-      setProcessing(false);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-      if (processing) {
-        setProcessingStage("Connection closed unexpectedly");
-        setProcessing(false);
-      }
-    };
+    try {
+      await enqueueAnalysisJob(pb.authStore.token, {
+        case_id: caseRow.id,
+        ...DEFAULT_ANALYSIS_PARAMS,
+      });
+      toast.success("Analysis re-queued");
+      await fetchData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to re-queue");
+    }
   };
 
   const openResultsForCase = (caseRow) => {
@@ -297,34 +233,6 @@ const CasesItem = () => {
       return;
     }
     navigate(`cases/${caseRow.id}/results`);
-  };
-
-  const handleViewOutput = () => {
-    if (lastAnalyzedCase?.id) {
-      navigate(`cases/${lastAnalyzedCase.id}/results`);
-    }
-  };
-
-  const resetCase = () => {
-    // Close WebSocket if open
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setSelectedVideo(null);
-    setSelectedPhoto(null);
-    setOutputVideo(null);
-    setLastAnalyzedCase(null);
-    setProcessing(false);
-    setProcessingProgress(0);
-    setProcessingStage("");
-    setShowCreateForm(false);
-    setCaseName("");
-    setCaseDescription("");
-    setMatches([]);
-    setStats({ currentFrame: 0, totalFrames: 0, matchesFound: 0 });
-    toast.success("Case reset successfully");
   };
 
   const handleCreateCase = async () => {
@@ -485,6 +393,20 @@ const CasesItem = () => {
                           {new Date(caseItem.created).toLocaleDateString()}
                         </span>
                       </div>
+
+                      {(caseItem.status === "queued" ||
+                        caseItem.status === "processing") &&
+                        caseItem.analysis_stage && (
+                          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                            {caseItem.analysis_stage}
+                          </p>
+                        )}
+                      {caseItem.status === "failed" &&
+                        caseItem.analysis_error && (
+                          <p className="text-xs text-destructive mt-2 line-clamp-3">
+                            {caseItem.analysis_error}
+                          </p>
+                        )}
                     </div>
                   </div>
 
@@ -500,10 +422,26 @@ const CasesItem = () => {
                         View Results
                       </Button>
                     )}
+                    {caseItem.status === "queued" && (
+                      <Button variant="outline" size="sm" disabled>
+                        <Clock className="h-4 w-4 mr-1" />
+                        In queue
+                      </Button>
+                    )}
                     {caseItem.status === "processing" && (
                       <Button variant="outline" size="sm" disabled>
                         <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                         Processing
+                      </Button>
+                    )}
+                    {caseItem.status === "failed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => retryEnqueue(caseItem)}
+                      >
+                        <Search className="h-4 w-4 mr-1" />
+                        Retry
                       </Button>
                     )}
                     <Button
@@ -533,7 +471,16 @@ const CasesItem = () => {
                 recognition analysis case
               </p>
             </div>
-            <Button variant="ghost" onClick={() => setShowCreateForm(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowCreateForm(false);
+                setSelectedVideo(null);
+                setSelectedPhoto(null);
+                setCaseName("");
+                setCaseDescription("");
+              }}
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -713,15 +660,15 @@ const CasesItem = () => {
                 disabled={
                   !selectedVideo ||
                   !selectedPhoto ||
-                  processing ||
+                  enqueueSubmitting ||
                   !caseName.trim()
                 }
                 className="w-full"
               >
-                {processing ? (
+                {enqueueSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
+                    Queuing…
                   </>
                 ) : (
                   <>
@@ -731,128 +678,11 @@ const CasesItem = () => {
                 )}
               </Button>
 
-              {processing && (
-                <Card className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        {processingStage}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {Math.round(processingProgress)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${processingProgress}%` }}
-                      />
-                    </div>
-
-                    {/* Real-time Stats */}
-                    <div className="grid grid-cols-3 gap-2 pt-2">
-                      <div className="text-center rounded-lg border border-border bg-chart-1/10 p-2 dark:bg-chart-1/15">
-                        <div className="text-lg font-bold tabular-nums text-chart-1">
-                          {stats.currentFrame}
-                        </div>
-                        <div className="text-xs text-chart-1">
-                          Current Frame
-                        </div>
-                      </div>
-                      <div className="text-center rounded-lg border border-border bg-chart-2/10 p-2 dark:bg-chart-2/15">
-                        <div className="text-lg font-bold tabular-nums text-chart-2">
-                          {stats.totalFrames}
-                        </div>
-                        <div className="text-xs text-chart-2">
-                          Total Frames
-                        </div>
-                      </div>
-                      <div className="text-center rounded-lg border border-border bg-chart-3/10 p-2 dark:bg-chart-3/15">
-                        <div className="text-lg font-bold tabular-nums text-chart-3">
-                          {stats.matchesFound}
-                        </div>
-                        <div className="text-xs text-chart-3">Matches</div>
-                      </div>
-                    </div>
-
-                    {/* Show Matches if any */}
-                    {matches.length > 0 && (
-                      <div className="mt-3">
-                        <div className="text-sm font-medium mb-2">
-                          Recent Matches:
-                        </div>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {matches.slice(-5).map((match, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-2 text-xs"
-                            >
-                              <img
-                                src={`data:image/jpeg;base64,${match.frameBase64}`}
-                                alt="Match"
-                                className="w-12 h-9 object-cover rounded"
-                              />
-                              <div className="flex-1">
-                                <div className="font-medium">
-                                  Frame {match.frameNumber}
-                                </div>
-                                <div className="text-muted-foreground">
-                                  {match.timestamp}s •{" "}
-                                  {(match.similarity * 100).toFixed(1)}%
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              )}
-
-              {/* Output Section */}
-              {outputVideo && (
-                <Card className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="font-semibold text-chart-2">
-                        Analysis Complete!
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Found {outputVideo.matches} matches in{" "}
-                        {outputVideo.processedFrames} processed frames
-                      </p>
-                    </div>
-                    <Button onClick={handleViewOutput} variant="outline">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Results
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="rounded-lg border border-border bg-chart-1/10 p-3 dark:bg-chart-1/15">
-                      <div className="text-2xl font-bold tabular-nums text-chart-1">
-                        {outputVideo.matches}
-                      </div>
-                      <div className="text-sm text-chart-1">Matches Found</div>
-                    </div>
-                    <div className="rounded-lg border border-border bg-chart-2/10 p-3 dark:bg-chart-2/15">
-                      <div className="text-2xl font-bold tabular-nums text-chart-2">
-                        {outputVideo.processedFrames}
-                      </div>
-                      <div className="text-sm text-chart-2">
-                        Processed Frames
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-border bg-chart-3/10 p-3 dark:bg-chart-3/15">
-                      <div className="text-2xl font-bold tabular-nums text-chart-3">
-                        {(outputVideo.confidence * 100).toFixed(0)}%
-                      </div>
-                      <div className="text-sm text-chart-3">Confidence</div>
-                    </div>
-                  </div>
-                </Card>
-              )}
+              <p className="text-xs text-muted-foreground text-center">
+                Analysis runs on the server in order with other jobs. Watch
+                progress under Active Cases — you can refresh or switch accounts
+                in the same organisation.
+              </p>
             </div>
           </div>
         </Card>

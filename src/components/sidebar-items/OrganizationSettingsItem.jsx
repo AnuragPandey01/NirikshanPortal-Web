@@ -290,8 +290,8 @@ const OrganizationSettingsItem = () => {
       {/* Invite Member Dialog */}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <UserPlus className="h-5 w-5 mr-2" />
+          <DialogTitle className="flex items-center text-foreground">
+            <UserPlus className="mr-2 h-5 w-5 shrink-0 text-primary" />
             Invite New Member
           </DialogTitle>
           <DialogDescription>
@@ -319,8 +319,8 @@ const OrganizationSettingsItem = () => {
           </div>
 
           {inviteCode && (
-            <div className="p-4 bg-muted rounded-lg">
-              <Label className="text-sm font-medium">
+            <div className="rounded-lg border border-border bg-muted/60 p-4">
+              <Label className="text-sm font-medium text-foreground">
                 Generated Invite Code
               </Label>
               <div className="mt-2 flex items-center space-x-2">
@@ -345,21 +345,25 @@ const OrganizationSettingsItem = () => {
             </div>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">
+          <div className="rounded-lg border border-border bg-chart-1/10 p-4 dark:bg-chart-1/15">
+            <h4 className="mb-2 text-sm font-medium text-chart-1">
               Instructions for the new member:
             </h4>
-            <div className="text-xs text-blue-700 space-y-1">
+            <div className="space-y-1 text-xs text-muted-foreground">
               <p>
-                1. Share the <strong>Invite Code</strong> above
+                1. Share the <strong className="text-foreground">Invite Code</strong>{" "}
+                above
               </p>
               <p>
-                2. Share the <strong>Organization ID</strong>:{" "}
-                <code className="bg-blue-100 px-1 rounded">
+                2. Share the <strong className="text-foreground">Organization ID</strong>:{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground text-[0.7rem]">
                   {organization?.id}
                 </code>
               </p>
-              <p>3. Both the invite code and organization id are required to join the organization</p>
+              <p>
+                3. Both the invite code and organization id are required to join
+                the organization
+              </p>
             </div>
           </div>
         </div>

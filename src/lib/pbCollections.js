@@ -7,4 +7,5 @@ export const PB_COLLECTIONS = {
   CCTV_FOOTAGE: "cctvFootage",
   REFERENCE_PHOTO: "referencePhoto",
   CASES: "cases",
+  CASE_MATCH: "caseMatch",
 };

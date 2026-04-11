@@ -43,7 +43,11 @@ const CasesItem = () => {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStage, setProcessingStage] = useState("");
   const [outputVideo, setOutputVideo] = useState(null);
-  const [outputDialogOpen, setOutputDialogOpen] = useState(false);
+  const [lastAnalyzedCase, setLastAnalyzedCase] = useState(null);
+  const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
+  const [resultsDialogCase, setResultsDialogCase] = useState(null);
+  const [resultsDialogMatches, setResultsDialogMatches] = useState([]);
+  const [resultsDialogLoading, setResultsDialogLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(false);
@@ -182,13 +186,14 @@ const CasesItem = () => {
         JSON.stringify({
           video_url: videoUrl,
           photo_url: photoUrl,
+          case_id: caseRecord.id,
           model_name: "Facenet512",
           detector_backend: "mtcnn",
           threshold: 0.3,
           frame_skip: 60,
           refine_around_matches: true,
           progress_every_n_frames: 24,
-          motion_filter: true
+          motion_filter: true,
         })
       );
     };
@@ -245,6 +250,15 @@ const CasesItem = () => {
             confidence: data.matches_count > 0 ? 0.8 : 0,
             processedFrames: data.processed_frames,
           });
+          setLastAnalyzedCase({
+            ...caseRecord,
+            matches_count: data.matches_count,
+            processed_frames: data.processed_frames,
+            expand: {
+              video: selectedVideo,
+              photo: selectedPhoto,
+            },
+          });
 
           toast.success(
             `Analysis complete! Found ${data.matches_count} matches in ${data.processed_frames} processed frames.`
@@ -286,12 +300,38 @@ const CasesItem = () => {
     };
   };
 
-  const handleViewOutput = () => {
-    setOutputDialogOpen(true);
+  const openResultsForCase = async (caseRow) => {
+    if (!caseRow?.id) {
+      toast.error("Missing case information");
+      return;
+    }
+    setResultsDialogCase(caseRow);
+    setResultsDialogOpen(true);
+    setResultsDialogLoading(true);
+    setResultsDialogMatches([]);
+    try {
+      const rows = await pb.collection(PB_COLLECTIONS.CASE_MATCH).getFullList({
+        filter: `case="${caseRow.id}"`,
+        sort: "frame_number",
+      });
+      setResultsDialogMatches(rows);
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not load saved results");
+    } finally {
+      setResultsDialogLoading(false);
+    }
   };
 
-  const handleCloseOutput = () => {
-    setOutputDialogOpen(false);
+  const handleViewOutput = () => {
+    if (lastAnalyzedCase) openResultsForCase(lastAnalyzedCase);
+  };
+
+  const handleCloseResultsDialog = (open) => {
+    if (open) return;
+    setResultsDialogOpen(false);
+    setResultsDialogCase(null);
+    setResultsDialogMatches([]);
     if (videoPlayerRef.current) {
       videoPlayerRef.current.pause();
     }
@@ -307,6 +347,7 @@ const CasesItem = () => {
     setSelectedVideo(null);
     setSelectedPhoto(null);
     setOutputVideo(null);
+    setLastAnalyzedCase(null);
     setProcessing(false);
     setProcessingProgress(0);
     setProcessingStage("");
@@ -368,7 +409,7 @@ const CasesItem = () => {
           </div>
         ) : cases.length === 0 ? (
           <div className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground/60 mb-4" />
             <p className="text-muted-foreground">No cases found</p>
             <p className="text-sm text-muted-foreground mt-2">
               Create your first case to start face recognition analysis
@@ -388,7 +429,7 @@ const CasesItem = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
                     {/* Video Thumbnail */}
-                    <div className="w-24 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                    <div className="w-24 h-16 bg-muted rounded-lg overflow-hidden shrink-0">
                       {caseItem.expand?.video?.video ? (
                         <video
                           className="w-full h-full object-cover"
@@ -410,14 +451,14 @@ const CasesItem = () => {
                           />
                         </video>
                       ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                          <Video className="h-6 w-6 text-gray-400" />
+                        <div className="w-full h-full bg-muted/80 flex items-center justify-center">
+                          <Video className="h-6 w-6 text-muted-foreground" />
                         </div>
                       )}
                     </div>
 
                     {/* Photo Thumbnail */}
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                    <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden shrink-0">
                       {caseItem.expand?.photo?.photo ? (
                         <img
                           src={pb.getFileUrl(
@@ -428,8 +469,8 @@ const CasesItem = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                          <Camera className="h-6 w-6 text-gray-400" />
+                        <div className="w-full h-full bg-muted/80 flex items-center justify-center">
+                          <Camera className="h-6 w-6 text-muted-foreground" />
                         </div>
                       )}
                     </div>
@@ -437,18 +478,18 @@ const CasesItem = () => {
                     {/* Case Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="font-medium text-gray-900">
+                        <h4 className="font-medium text-foreground">
                           {caseItem.name || `Case #${caseItem.id.slice(-8)}`}
                         </h4>
                       </div>
 
                       {caseItem.description && (
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                           {caseItem.description}
                         </p>
                       )}
 
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                         <div>
                           <div className="flex items-center mb-1">
                             <Video className="h-4 w-4 mr-2" />
@@ -469,7 +510,7 @@ const CasesItem = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center text-xs text-gray-500 mt-2">
+                      <div className="flex items-center text-xs text-muted-foreground mt-2">
                         <Calendar className="h-3 w-3 mr-1" />
                         <span>
                           Created{" "}
@@ -482,7 +523,11 @@ const CasesItem = () => {
                   {/* Actions */}
                   <div className="flex items-center space-x-2 ml-4">
                     {caseItem.status === "completed" && (
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openResultsForCase(caseItem)}
+                      >
                         <Eye className="h-4 w-4 mr-1" />
                         View Results
                       </Button>
@@ -496,7 +541,7 @@ const CasesItem = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                       onClick={() => handleDeleteCase(caseItem.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -572,8 +617,8 @@ const CasesItem = () => {
                   </p>
                 </div>
               ) : uploadedVideos.length === 0 ? (
-                <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                  <PlayCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                  <PlayCircle className="h-12 w-12 mx-auto text-muted-foreground/60 mb-4" />
                   <p className="text-muted-foreground">No videos available</p>
                   <p className="text-sm text-muted-foreground mt-2">
                     Upload videos in the Surveillance section first
@@ -591,7 +636,7 @@ const CasesItem = () => {
                       }`}
                       onClick={() => handleVideoSelect(video)}
                     >
-                      <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
+                      <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
                         {video.video && (
                           <>
                             <video
@@ -608,22 +653,24 @@ const CasesItem = () => {
                               />
                             </video>
                             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <PlayCircle className="h-8 w-8 text-white drop-shadow-lg" />
+                              <div className="rounded-full bg-primary/90 p-2 shadow-md ring-2 ring-primary-foreground/20">
+                                <PlayCircle className="h-8 w-8 text-primary-foreground" />
+                              </div>
                             </div>
                           </>
                         )}
                         {selectedVideo?.id === video.id && (
-                          <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-1">
+                          <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
                             <CheckCircle className="h-4 w-4" />
                           </div>
                         )}
-                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute bottom-2 left-2 bg-foreground/80 text-background text-xs px-2 py-1 rounded">
                           <Clock className="h-3 w-3 inline mr-1" />
                           {new Date(video.created).toLocaleDateString()}
                         </div>
                       </div>
                       <div className="mt-2">
-                        <h4 className="text-sm font-medium truncate text-gray-900">
+                        <h4 className="text-sm font-medium truncate text-foreground">
                           {video.video || "Untitled Video"}
                         </h4>
                       </div>
@@ -646,8 +693,8 @@ const CasesItem = () => {
                   </p>
                 </div>
               ) : referencePhotos.length === 0 ? (
-                <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                  <Image className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                  <Image className="h-12 w-12 mx-auto text-muted-foreground/60 mb-4" />
                   <p className="text-muted-foreground">
                     No reference photos available
                   </p>
@@ -667,21 +714,21 @@ const CasesItem = () => {
                       }`}
                       onClick={() => handlePhotoSelect(photo)}
                     >
-                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
+                      <div className="aspect-square bg-muted rounded-lg overflow-hidden relative">
                         <img
                           src={pb.getFileUrl(photo, photo.photo)}
                           alt="Reference"
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+                        <div className="absolute inset-0 bg-transparent transition-colors duration-200 group-hover:bg-foreground/10" />
                         {selectedPhoto?.id === photo.id && (
-                          <div className="absolute top-1 right-1 bg-primary text-white rounded-full p-1">
+                          <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-1">
                             <CheckCircle className="h-3 w-3" />
                           </div>
                         )}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                          <div className="bg-white/90 rounded-full p-2">
-                            <Image className="h-4 w-4 text-gray-700" />
+                          <div className="bg-card/90 rounded-full p-2 shadow-sm ring-1 ring-border">
+                            <Image className="h-4 w-4 text-foreground" />
                           </div>
                         </div>
                       </div>
@@ -727,7 +774,7 @@ const CasesItem = () => {
                         {Math.round(processingProgress)}%
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full transition-all duration-300"
                         style={{ width: `${processingProgress}%` }}
@@ -736,27 +783,27 @@ const CasesItem = () => {
 
                     {/* Real-time Stats */}
                     <div className="grid grid-cols-3 gap-2 pt-2">
-                      <div className="text-center p-2 bg-blue-50 rounded">
-                        <div className="text-lg font-bold text-blue-600">
+                      <div className="text-center rounded-lg border border-border bg-chart-1/10 p-2 dark:bg-chart-1/15">
+                        <div className="text-lg font-bold tabular-nums text-chart-1">
                           {stats.currentFrame}
                         </div>
-                        <div className="text-xs text-blue-600">
+                        <div className="text-xs text-chart-1">
                           Current Frame
                         </div>
                       </div>
-                      <div className="text-center p-2 bg-green-50 rounded">
-                        <div className="text-lg font-bold text-green-600">
+                      <div className="text-center rounded-lg border border-border bg-chart-2/10 p-2 dark:bg-chart-2/15">
+                        <div className="text-lg font-bold tabular-nums text-chart-2">
                           {stats.totalFrames}
                         </div>
-                        <div className="text-xs text-green-600">
+                        <div className="text-xs text-chart-2">
                           Total Frames
                         </div>
                       </div>
-                      <div className="text-center p-2 bg-purple-50 rounded">
-                        <div className="text-lg font-bold text-purple-600">
+                      <div className="text-center rounded-lg border border-border bg-chart-3/10 p-2 dark:bg-chart-3/15">
+                        <div className="text-lg font-bold tabular-nums text-chart-3">
                           {stats.matchesFound}
                         </div>
-                        <div className="text-xs text-purple-600">Matches</div>
+                        <div className="text-xs text-chart-3">Matches</div>
                       </div>
                     </div>
 
@@ -770,7 +817,7 @@ const CasesItem = () => {
                           {matches.slice(-5).map((match, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs"
+                              className="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-2 text-xs"
                             >
                               <img
                                 src={`data:image/jpeg;base64,${match.frameBase64}`}
@@ -781,7 +828,7 @@ const CasesItem = () => {
                                 <div className="font-medium">
                                   Frame {match.frameNumber}
                                 </div>
-                                <div className="text-gray-600">
+                                <div className="text-muted-foreground">
                                   {match.timestamp}s •{" "}
                                   {(match.similarity * 100).toFixed(1)}%
                                 </div>
@@ -800,7 +847,7 @@ const CasesItem = () => {
                 <Card className="p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="font-semibold text-green-600">
+                      <h4 className="font-semibold text-chart-2">
                         Analysis Complete!
                       </h4>
                       <p className="text-sm text-muted-foreground">
@@ -815,25 +862,25 @@ const CasesItem = () => {
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
+                    <div className="rounded-lg border border-border bg-chart-1/10 p-3 dark:bg-chart-1/15">
+                      <div className="text-2xl font-bold tabular-nums text-chart-1">
                         {outputVideo.matches}
                       </div>
-                      <div className="text-sm text-blue-600">Matches Found</div>
+                      <div className="text-sm text-chart-1">Matches Found</div>
                     </div>
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">
+                    <div className="rounded-lg border border-border bg-chart-2/10 p-3 dark:bg-chart-2/15">
+                      <div className="text-2xl font-bold tabular-nums text-chart-2">
                         {outputVideo.processedFrames}
                       </div>
-                      <div className="text-sm text-green-600">
+                      <div className="text-sm text-chart-2">
                         Processed Frames
                       </div>
                     </div>
-                    <div className="p-3 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">
+                    <div className="rounded-lg border border-border bg-chart-3/10 p-3 dark:bg-chart-3/15">
+                      <div className="text-2xl font-bold tabular-nums text-chart-3">
                         {(outputVideo.confidence * 100).toFixed(0)}%
                       </div>
-                      <div className="text-sm text-purple-600">Confidence</div>
+                      <div className="text-sm text-chart-3">Confidence</div>
                     </div>
                   </div>
                 </Card>
@@ -844,17 +891,21 @@ const CasesItem = () => {
       )}
 
       {/* Output Video Dialog */}
-      <Dialog open={outputDialogOpen} onOpenChange={handleCloseOutput}>
+      <Dialog open={resultsDialogOpen} onOpenChange={handleCloseResultsDialog}>
         <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>Analysis Results</span>
+              <span>
+                {resultsDialogCase?.name?.trim()
+                  ? resultsDialogCase.name
+                  : "Analysis results"}
+              </span>
             </DialogTitle>
             <DialogDescription>
-              Video with highlighted face matches and analysis results
+              Source video, reference photo, and frames saved for this case
             </DialogDescription>
           </DialogHeader>
-          {outputVideo && (
+          {resultsDialogCase && (
             <div className="space-y-4">
               <div className="aspect-video bg-black rounded-md overflow-hidden">
                 <video
@@ -863,79 +914,103 @@ const CasesItem = () => {
                   controls
                   autoPlay
                 >
-                  <source
-                    src={pb.getFileUrl(selectedVideo, selectedVideo.video)}
-                    type="video/mp4"
-                  />
+                  {resultsDialogCase.expand?.video?.video ? (
+                    <source
+                      src={pb.getFileUrl(
+                        resultsDialogCase.expand.video,
+                        resultsDialogCase.expand.video.video
+                      )}
+                      type="video/mp4"
+                    />
+                  ) : null}
                   Your browser does not support the video tag.
                 </video>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <h4 className="font-semibold mb-2">Analysis Summary</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Total Matches:</span>
-                      <span className="font-medium">{outputVideo.matches}</span>
+                      <span className="font-medium">
+                        {resultsDialogCase.matches_count ?? resultsDialogMatches.length}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Processed Frames:</span>
                       <span className="font-medium">
-                        {outputVideo.processedFrames}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Confidence:</span>
-                      <span className="font-medium">
-                        {(outputVideo.confidence * 100).toFixed(1)}%
+                        {resultsDialogCase.processed_frames ?? "—"}
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <h4 className="font-semibold mb-2">Reference Photo</h4>
-                  <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
-                    {selectedPhoto && (
+                  <div className="aspect-square overflow-hidden rounded-lg bg-muted">
+                    {resultsDialogCase.expand?.photo?.photo ? (
                       <img
-                        src={pb.getFileUrl(selectedPhoto, selectedPhoto.photo)}
+                        src={pb.getFileUrl(
+                          resultsDialogCase.expand.photo,
+                          resultsDialogCase.expand.photo.photo
+                        )}
                         alt="Reference"
                         className="w-full h-full object-cover"
                       />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        No reference image
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Display Matches */}
-              {matches.length > 0 && (
-                <div className="p-4 bg-gray-50 rounded-lg">
+              {resultsDialogLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                  <p className="text-sm">Loading saved matches…</p>
+                </div>
+              ) : resultsDialogMatches.length > 0 ? (
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <h4 className="font-semibold mb-3">Detected Matches</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {matches.map((match, idx) => (
+                    {resultsDialogMatches.map((row) => (
                       <div
-                        key={idx}
-                        className="bg-white p-2 rounded-lg border border-gray-200"
+                        key={row.id}
+                        className="rounded-lg border border-border bg-card p-2"
                       >
-                        <img
-                          src={`data:image/jpeg;base64,${match.frameBase64}`}
-                          alt={`Match ${idx + 1}`}
-                          className="w-full h-24 object-cover rounded mb-2"
-                        />
+                        {row.thumbnail ? (
+                          <img
+                            src={pb.getFileUrl(row, row.thumbnail)}
+                            alt={`Frame ${row.frame_number}`}
+                            className="w-full h-24 object-cover rounded mb-2"
+                          />
+                        ) : (
+                          <div className="w-full h-24 rounded mb-2 bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                            No thumbnail
+                          </div>
+                        )}
                         <div className="text-xs">
                           <div className="font-medium">
-                            Frame {match.frameNumber}
+                            Frame {row.frame_number}
                           </div>
-                          <div className="text-gray-600">
-                            {match.timestamp}s
+                          <div className="text-muted-foreground">
+                            {row.timestamp_sec}s
                           </div>
-                          <div className="text-blue-600 font-semibold">
-                            {(match.similarity * 100).toFixed(1)}% similarity
+                          <div className="font-semibold text-primary">
+                            {typeof row.similarity_score === "number"
+                              ? `${(row.similarity_score * 100).toFixed(1)}% similarity`
+                              : "—"}
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  No saved frame matches for this case yet.
+                </p>
               )}
             </div>
           )}

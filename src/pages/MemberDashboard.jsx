@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, Routes, Route } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/ui/sidebar";
 import {
@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 // Import sidebar item components
 import CasesItem from "@/components/sidebar-items/CasesItem";
+import CaseResultsView from "@/components/CaseResultsView";
 import SurveillanceItem from "@/components/sidebar-items/SurveillanceItem";
 import SearchItem from "@/components/sidebar-items/SearchItem";
 import AnalyticsItem from "@/components/sidebar-items/AnalyticsItem";
@@ -27,6 +28,20 @@ const MemberDashboard = () => {
   const { user, organization, logout } = useAuthStore();
   const [activeTab, setActiveTab] = useState("cases");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (/\/cases\/[^/]+\/results$/.test(location.pathname)) {
+      setActiveTab("cases");
+    }
+  }, [location.pathname]);
+
+  const handleSidebarClick = (id) => {
+    setActiveTab(id);
+    if (/\/cases\/[^/]+\/results$/.test(location.pathname)) {
+      navigate("/member");
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -55,7 +70,7 @@ const MemberDashboard = () => {
         mainItems={mainItems}
         userSettingsItems={userSettingsItems}
         activeItem={activeTab}
-        onItemClick={setActiveTab}
+        onItemClick={handleSidebarClick}
       />
 
       <div className="flex-1 ml-64">
@@ -65,7 +80,9 @@ const MemberDashboard = () => {
             <div className="flex justify-between items-center h-16">
               <div className="ml-3">
                 <h1 className="text-lg font-semibold">
-                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                  {/\/cases\/[^/]+\/results$/.test(location.pathname)
+                    ? "Case results"
+                    : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   {organization?.name}
@@ -84,17 +101,27 @@ const MemberDashboard = () => {
 
         {/* Main Content */}
         <main className="p-6">
-            {activeTab === "dashboard" && (
-              <DashboardItem setActiveTab={setActiveTab} />
-            )}
-            {activeTab === "cases" && <CasesItem />}
-            {activeTab === "surveillance" && <SurveillanceItem />}
-            {activeTab === "search" && <SearchItem />}
-            {activeTab === "analytics" && <AnalyticsItem />}
-            {activeTab === "alerts" && <AlertsItem />}
-            {activeTab === "user-settings" && (
-              <UserSettingsItem userRole="Member" />
-            )}
+          <Routes>
+            <Route
+              path="cases/:caseId/results"
+              element={<CaseResultsView dashboardPath="/member" />}
+            />
+            <Route
+              path="*"
+              element={
+                <>
+                  {activeTab === "cases" && <CasesItem />}
+                  {activeTab === "surveillance" && <SurveillanceItem />}
+                  {activeTab === "search" && <SearchItem />}
+                  {activeTab === "analytics" && <AnalyticsItem />}
+                  {activeTab === "alerts" && <AlertsItem />}
+                  {activeTab === "user-settings" && (
+                    <UserSettingsItem userRole="Member" />
+                  )}
+                </>
+              }
+            />
+          </Routes>
         </main>
       </div>
     </div>

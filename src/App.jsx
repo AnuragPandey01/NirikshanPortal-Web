@@ -89,7 +89,7 @@ function App() {
 
         {/* Organization-protected routes */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <OrganizationRoute requiredRole="admin">
               <AdminDashboard />
@@ -97,7 +97,7 @@ function App() {
           }
         />
         <Route
-          path="/member"
+          path="/member/*"
           element={
             <OrganizationRoute requiredRole="member">
               <MemberDashboard />

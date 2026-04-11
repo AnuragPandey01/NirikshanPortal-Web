@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,19 +22,13 @@ import {
   Camera,
   X,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import pb from "@/lib/pb";
 import { PB_COLLECTIONS } from "@/lib/pbCollections";
 import useAuthStore from "@/store/authStore";
 
 const CasesItem = () => {
   const { organization } = useAuthStore();
+  const navigate = useNavigate();
   const [cases, setCases] = useState([]);
   const [uploadedVideos, setUploadedVideos] = useState([]);
   const [referencePhotos, setReferencePhotos] = useState([]);
@@ -44,10 +39,6 @@ const CasesItem = () => {
   const [processingStage, setProcessingStage] = useState("");
   const [outputVideo, setOutputVideo] = useState(null);
   const [lastAnalyzedCase, setLastAnalyzedCase] = useState(null);
-  const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
-  const [resultsDialogCase, setResultsDialogCase] = useState(null);
-  const [resultsDialogMatches, setResultsDialogMatches] = useState([]);
-  const [resultsDialogLoading, setResultsDialogLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(false);
@@ -60,7 +51,6 @@ const CasesItem = () => {
     totalFrames: 0,
     matchesFound: 0,
   });
-  const videoPlayerRef = useRef(null);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -230,6 +220,7 @@ const CasesItem = () => {
               timestamp: data.timestamp,
               similarity: data.similarity_score,
               frameBase64: data.frame_base64,
+              face_bbox: data.face_bbox ?? null,
             },
           ]);
         } else if (msgType === "complete") {
@@ -300,40 +291,17 @@ const CasesItem = () => {
     };
   };
 
-  const openResultsForCase = async (caseRow) => {
+  const openResultsForCase = (caseRow) => {
     if (!caseRow?.id) {
       toast.error("Missing case information");
       return;
     }
-    setResultsDialogCase(caseRow);
-    setResultsDialogOpen(true);
-    setResultsDialogLoading(true);
-    setResultsDialogMatches([]);
-    try {
-      const rows = await pb.collection(PB_COLLECTIONS.CASE_MATCH).getFullList({
-        filter: `case="${caseRow.id}"`,
-        sort: "frame_number",
-      });
-      setResultsDialogMatches(rows);
-    } catch (e) {
-      console.error(e);
-      toast.error("Could not load saved results");
-    } finally {
-      setResultsDialogLoading(false);
-    }
+    navigate(`cases/${caseRow.id}/results`);
   };
 
   const handleViewOutput = () => {
-    if (lastAnalyzedCase) openResultsForCase(lastAnalyzedCase);
-  };
-
-  const handleCloseResultsDialog = (open) => {
-    if (open) return;
-    setResultsDialogOpen(false);
-    setResultsDialogCase(null);
-    setResultsDialogMatches([]);
-    if (videoPlayerRef.current) {
-      videoPlayerRef.current.pause();
+    if (lastAnalyzedCase?.id) {
+      navigate(`cases/${lastAnalyzedCase.id}/results`);
     }
   };
 
@@ -889,133 +857,6 @@ const CasesItem = () => {
           </div>
         </Card>
       )}
-
-      {/* Output Video Dialog */}
-      <Dialog open={resultsDialogOpen} onOpenChange={handleCloseResultsDialog}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>
-                {resultsDialogCase?.name?.trim()
-                  ? resultsDialogCase.name
-                  : "Analysis results"}
-              </span>
-            </DialogTitle>
-            <DialogDescription>
-              Source video, reference photo, and frames saved for this case
-            </DialogDescription>
-          </DialogHeader>
-          {resultsDialogCase && (
-            <div className="space-y-4">
-              <div className="aspect-video bg-black rounded-md overflow-hidden">
-                <video
-                  ref={videoPlayerRef}
-                  className="w-full h-full"
-                  controls
-                  autoPlay
-                >
-                  {resultsDialogCase.expand?.video?.video ? (
-                    <source
-                      src={pb.getFileUrl(
-                        resultsDialogCase.expand.video,
-                        resultsDialogCase.expand.video.video
-                      )}
-                      type="video/mp4"
-                    />
-                  ) : null}
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
-                  <h4 className="font-semibold mb-2">Analysis Summary</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Total Matches:</span>
-                      <span className="font-medium">
-                        {resultsDialogCase.matches_count ?? resultsDialogMatches.length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Processed Frames:</span>
-                      <span className="font-medium">
-                        {resultsDialogCase.processed_frames ?? "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
-                  <h4 className="font-semibold mb-2">Reference Photo</h4>
-                  <div className="aspect-square overflow-hidden rounded-lg bg-muted">
-                    {resultsDialogCase.expand?.photo?.photo ? (
-                      <img
-                        src={pb.getFileUrl(
-                          resultsDialogCase.expand.photo,
-                          resultsDialogCase.expand.photo.photo
-                        )}
-                        alt="Reference"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        No reference image
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {resultsDialogLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                  <p className="text-sm">Loading saved matches…</p>
-                </div>
-              ) : resultsDialogMatches.length > 0 ? (
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
-                  <h4 className="font-semibold mb-3">Detected Matches</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {resultsDialogMatches.map((row) => (
-                      <div
-                        key={row.id}
-                        className="rounded-lg border border-border bg-card p-2"
-                      >
-                        {row.thumbnail ? (
-                          <img
-                            src={pb.getFileUrl(row, row.thumbnail)}
-                            alt={`Frame ${row.frame_number}`}
-                            className="w-full h-24 object-cover rounded mb-2"
-                          />
-                        ) : (
-                          <div className="w-full h-24 rounded mb-2 bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                            No thumbnail
-                          </div>
-                        )}
-                        <div className="text-xs">
-                          <div className="font-medium">
-                            Frame {row.frame_number}
-                          </div>
-                          <div className="text-muted-foreground">
-                            {row.timestamp_sec}s
-                          </div>
-                          <div className="font-semibold text-primary">
-                            {typeof row.similarity_score === "number"
-                              ? `${(row.similarity_score * 100).toFixed(1)}% similarity`
-                              : "—"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  No saved frame matches for this case yet.
-                </p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

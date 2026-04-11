@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, Routes, Route } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/ui/sidebar";
 import {
@@ -21,6 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 // Import sidebar item components
 import DashboardItem from "@/components/sidebar-items/DashboardItem";
 import CasesItem from "@/components/sidebar-items/CasesItem";
+import CaseResultsView from "@/components/CaseResultsView";
 import SurveillanceItem from "@/components/sidebar-items/SurveillanceItem";
 import SearchItem from "@/components/sidebar-items/SearchItem";
 import AnalyticsItem from "@/components/sidebar-items/AnalyticsItem";
@@ -33,6 +34,20 @@ const AdminDashboard = () => {
   const { user, organization, logout } = useAuthStore();
   const [activeTab, setActiveTab] = useState("dashboard");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (/\/cases\/[^/]+\/results$/.test(location.pathname)) {
+      setActiveTab("cases");
+    }
+  }, [location.pathname]);
+
+  const handleSidebarClick = (id) => {
+    setActiveTab(id);
+    if (/\/cases\/[^/]+\/results$/.test(location.pathname)) {
+      navigate("/admin");
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -68,7 +83,7 @@ const AdminDashboard = () => {
         orgSettingsItems={orgSettingsItems}
         userSettingsItems={userSettingsItems}
         activeItem={activeTab}
-        onItemClick={setActiveTab}
+        onItemClick={handleSidebarClick}
       />
 
       <div className="flex-1 ml-64">
@@ -79,9 +94,13 @@ const AdminDashboard = () => {
               <div className="ml-3">
                 <div className="flex items-center">
                   <h1 className="text-lg font-semibold">
-                    {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    {/\/cases\/[^/]+\/results$/.test(location.pathname)
+                      ? "Case results"
+                      : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                   </h1>
-                  <Crown className="h-4 w-4 text-yellow-500 ml-2" />
+                  {!/\/cases\/[^/]+\/results$/.test(location.pathname) && (
+                    <Crown className="h-4 w-4 text-yellow-500 ml-2" />
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {organization?.name}
@@ -100,19 +119,32 @@ const AdminDashboard = () => {
 
         {/* Main Content */}
         <main className="p-6">
-          {activeTab === "dashboard" && (
-            <DashboardItem setActiveTab={setActiveTab} />
-          )}
-          {activeTab === "cases" && <CasesItem />}
-          {activeTab === "surveillance" && <SurveillanceItem />}
-          {activeTab === "search" && <SearchItem />}
-          {activeTab === "analytics" && <AnalyticsItem />}
-          {activeTab === "alerts" && <AlertsItem />}
-          {activeTab === "users" && <UsersItem />}
-          {activeTab === "org-settings" && <OrganizationSettingsItem />}
-          {activeTab === "user-settings" && (
-            <UserSettingsItem userRole="Admin" />
-          )}
+          <Routes>
+            <Route
+              path="cases/:caseId/results"
+              element={<CaseResultsView dashboardPath="/admin" />}
+            />
+            <Route
+              path="*"
+              element={
+                <>
+                  {activeTab === "dashboard" && (
+                    <DashboardItem setActiveTab={setActiveTab} />
+                  )}
+                  {activeTab === "cases" && <CasesItem />}
+                  {activeTab === "surveillance" && <SurveillanceItem />}
+                  {activeTab === "search" && <SearchItem />}
+                  {activeTab === "analytics" && <AnalyticsItem />}
+                  {activeTab === "alerts" && <AlertsItem />}
+                  {activeTab === "users" && <UsersItem />}
+                  {activeTab === "org-settings" && <OrganizationSettingsItem />}
+                  {activeTab === "user-settings" && (
+                    <UserSettingsItem userRole="Admin" />
+                  )}
+                </>
+              }
+            />
+          </Routes>
         </main>
       </div>
     </div>
